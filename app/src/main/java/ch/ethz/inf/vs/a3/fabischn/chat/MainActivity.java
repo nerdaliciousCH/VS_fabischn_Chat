@@ -13,6 +13,9 @@ import android.widget.Button;
 import android.widget.EditText;
 
 import java.net.DatagramSocket;
+import java.net.InetAddress;
+import java.net.SocketException;
+import java.net.UnknownHostException;
 
 public class MainActivity extends AppCompatActivity implements SharedPreferences.OnSharedPreferenceChangeListener, Button.OnClickListener{
 
@@ -22,10 +25,15 @@ public class MainActivity extends AppCompatActivity implements SharedPreferences
     private static String KEY_SETTING_IP;
     private static String KEY_SETTING_PORT;
 
-    EditText EditTextUsername;
-    Button ButtonJoin;
+    private InetAddress mChatServerIP;
+    private int mChatServerPORT;
 
-    DatagramSocket udpSocket;
+    private EditText mEditTextUsername;
+    private Button mButtonJoin;
+
+    private SharedPreferences mSharedPreferences;
+
+    DatagramSocket mUDPSocket;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -35,11 +43,40 @@ public class MainActivity extends AppCompatActivity implements SharedPreferences
         KEY_SETTING_IP = getResources().getString(R.string.setting_ip);
         KEY_SETTING_PORT = getResources().getString(R.string.setting_port);
 
-        EditTextUsername = (EditText) findViewById(R.id.edittext_username);
-        ButtonJoin = (Button) findViewById(R.id.btn_join);
+        mEditTextUsername = (EditText) findViewById(R.id.edittext_username);
+        mButtonJoin = (Button) findViewById(R.id.btn_join);
 
-        PreferenceManager.getDefaultSharedPreferences(this).registerOnSharedPreferenceChangeListener(this);
+        mSharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
 
+        //TODO
+        try {
+            mChatServerIP = InetAddress.getByName(mSharedPreferences.getString(KEY_SETTING_IP, "no ip"));
+        } catch (UnknownHostException e) {
+            Log.e(TAG, "Malformed IP in preferences", e);
+        }
+        mChatServerPORT = mSharedPreferences.getInt(KEY_SETTING_PORT, -1);
+
+        try {
+            mUDPSocket = new DatagramSocket();
+        } catch (SocketException e) {
+            Log.e(TAG, "Exploded trying to instantiate DatagramSocket", e);
+        }
+        if (mUDPSocket != null){
+
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        mSharedPreferences.registerOnSharedPreferenceChangeListener(this);
+
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        mSharedPreferences.unregisterOnSharedPreferenceChangeListener(this);
     }
 
     @Override
@@ -63,12 +100,10 @@ public class MainActivity extends AppCompatActivity implements SharedPreferences
     @Override
     public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
         if (key == KEY_SETTING_IP){
-            Log.d(TAG, "IP changed");
             Log.d(TAG, sharedPreferences.getString(KEY_SETTING_IP, "no preference found"));
         }
 
         if (key == KEY_SETTING_PORT){
-            Log.d(TAG, "PORT changed");
             Log.d(TAG, sharedPreferences.getString(KEY_SETTING_PORT, "no preference found"));
         }
     }
@@ -78,7 +113,6 @@ public class MainActivity extends AppCompatActivity implements SharedPreferences
         if (v.getId() == R.id.btn_join){
             Intent intent = new Intent(this, ChatActivity.class);
             startActivity(intent);
-
         }
     }
 }

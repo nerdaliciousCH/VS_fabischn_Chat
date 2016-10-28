@@ -1,12 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- http://stackoverflow.com/questions/8661915/what-androidinputtype-should-i-use-for-entering-an-ip-address -->
     <EditTextPreference
         android:key="@string/setting_ip"
         android:title="@string/label_setting_ip"
         android:defaultValue="127.0.0.1"
+        android:inputType="number|numberDecimal"
+        android:digits="0123456789."
         />
     <EditTextPreference
         android:key="@string/setting_port"
         android:title="@string/label_setting_port"
-        android:defaultValue="8080" />
+        android:defaultValue="8080"
+        android:inputType="number"/>
 </PreferenceScreen>
