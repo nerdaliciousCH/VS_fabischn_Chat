@@ -17,6 +17,8 @@ import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 
+import ch.ethz.inf.vs.a3.fabischn.udpclient.UDPClient;
+
 public class MainActivity extends AppCompatActivity implements SharedPreferences.OnSharedPreferenceChangeListener, Button.OnClickListener{
 
 
@@ -27,7 +29,7 @@ public class MainActivity extends AppCompatActivity implements SharedPreferences
 
     private String mChatServerIPString;
     private String mChatServerPORTString;
-//    private int mChatServerPORT;
+    private int mChatServerPORTInteger;
 
     private EditText mEditTextUsername;
     private Button mButtonJoin;
@@ -58,6 +60,10 @@ public class MainActivity extends AppCompatActivity implements SharedPreferences
         mSharedPreferences.registerOnSharedPreferenceChangeListener(this);
         mChatServerIPString = mSharedPreferences.getString(KEY_SETTING_IP, "no ip");
         mChatServerPORTString = mSharedPreferences.getString(KEY_SETTING_PORT, "no port");
+
+        Log.d(TAG, "IP: " + mChatServerIPString);
+        Log.d(TAG, "Port: " + mChatServerPORTString);
+        mChatServerPORTInteger = Integer.parseInt(mChatServerPORTString);
         updateJoinButton();
     }
 
@@ -90,7 +96,6 @@ public class MainActivity extends AppCompatActivity implements SharedPreferences
         if (key == KEY_SETTING_IP){
             mChatServerIPString = mSharedPreferences.getString(KEY_SETTING_IP, "no ip");
             updateJoinButton();
-
         }
 
         if (key == KEY_SETTING_PORT){
@@ -102,8 +107,12 @@ public class MainActivity extends AppCompatActivity implements SharedPreferences
     @Override
     public void onClick(View v) {
         if (v.getId() == R.id.btn_join){
-            Intent intent = new Intent(this, ChatActivity.class);
-            startActivity(intent);
+            // TODO try connecting and joining chat. If ok, transition to Chat activity
+
+            UDPClient udpClient = new UDPClient(mChatServerIPString, mChatServerPORTInteger, 4);
+            udpClient.start();
+//            Intent intent = new Intent(this, ChatActivity.class);
+//            startActivity(intent);
         }
     }
 
