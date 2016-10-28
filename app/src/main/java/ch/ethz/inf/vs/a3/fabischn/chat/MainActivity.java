@@ -25,8 +25,9 @@ public class MainActivity extends AppCompatActivity implements SharedPreferences
     private static String KEY_SETTING_IP;
     private static String KEY_SETTING_PORT;
 
-    private InetAddress mChatServerIP;
-    private int mChatServerPORT;
+    private String mChatServerIPString;
+    private String mChatServerPORTString;
+//    private int mChatServerPORT;
 
     private EditText mEditTextUsername;
     private Button mButtonJoin;
@@ -46,31 +47,18 @@ public class MainActivity extends AppCompatActivity implements SharedPreferences
         mEditTextUsername = (EditText) findViewById(R.id.edittext_username);
         mButtonJoin = (Button) findViewById(R.id.btn_join);
 
+        PreferenceManager.setDefaultValues(this, R.xml.preferences, false);
         mSharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
 
-        //TODO
-        try {
-            mChatServerIP = InetAddress.getByName(mSharedPreferences.getString(KEY_SETTING_IP, "no ip"));
-        } catch (UnknownHostException e) {
-            Log.e(TAG, "Malformed IP in preferences", e);
-        }
-        mChatServerPORT = mSharedPreferences.getInt(KEY_SETTING_PORT, -1);
-
-        try {
-            mUDPSocket = new DatagramSocket();
-        } catch (SocketException e) {
-            Log.e(TAG, "Exploded trying to instantiate DatagramSocket", e);
-        }
-        if (mUDPSocket != null){
-
-        }
     }
 
     @Override
     protected void onResume() {
         super.onResume();
         mSharedPreferences.registerOnSharedPreferenceChangeListener(this);
-
+        mChatServerIPString = mSharedPreferences.getString(KEY_SETTING_IP, "no ip");
+        mChatServerPORTString = mSharedPreferences.getString(KEY_SETTING_PORT, "no port");
+        updateJoinButton();
     }
 
     @Override
@@ -100,11 +88,14 @@ public class MainActivity extends AppCompatActivity implements SharedPreferences
     @Override
     public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
         if (key == KEY_SETTING_IP){
-            Log.d(TAG, sharedPreferences.getString(KEY_SETTING_IP, "no preference found"));
+            mChatServerIPString = mSharedPreferences.getString(KEY_SETTING_IP, "no ip");
+            updateJoinButton();
+
         }
 
         if (key == KEY_SETTING_PORT){
-            Log.d(TAG, sharedPreferences.getString(KEY_SETTING_PORT, "no preference found"));
+            mChatServerPORTString = mSharedPreferences.getString(KEY_SETTING_PORT, "no port");
+            updateJoinButton();
         }
     }
 
@@ -114,5 +105,9 @@ public class MainActivity extends AppCompatActivity implements SharedPreferences
             Intent intent = new Intent(this, ChatActivity.class);
             startActivity(intent);
         }
+    }
+
+    public void updateJoinButton(){
+        mButtonJoin.setText("Join Chat @ " + mChatServerIPString + ":" + mChatServerPORTString);
     }
 }
