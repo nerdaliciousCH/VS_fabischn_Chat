@@ -1,3 +1,15 @@
 <resources>
-    <string name="app_name">VS_fabischn_Chat</string>
+    <string name="app_name">VS fabischn Chat</string>
+    <string name="enter_a_username">Enter a username</string>
+    <string name="join_chat">Join chat</string>
+    <string name="menu_settings">Settings</string>
+    <string name="label_setting_ip">Chat server\'s IP Address</string>
+    <string name="label_setting_port">Chat server\'s UDP Port</string>
+
+    <!-- keys for preferences -->
+    <string name="setting_ip">setting_ip</string>
+    <string name="setting_port">setting_port</string>
+
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
 </resources>

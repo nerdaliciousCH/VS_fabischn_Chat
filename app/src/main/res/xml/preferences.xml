@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+    <EditTextPreference
+        android:key="@string/setting_ip"
+        android:title="@string/label_setting_ip"
+        android:defaultValue="127.0.0.1"
+        />
+    <EditTextPreference
+        android:key="@string/setting_port"
+        android:title="@string/label_setting_port"
+        android:defaultValue="8080" />
+</PreferenceScreen>
