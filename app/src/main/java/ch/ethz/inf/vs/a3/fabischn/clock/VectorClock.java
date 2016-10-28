@@ -40,22 +40,8 @@ public class VectorClock implements Clock {
 
     @Override
     public void setClock(Clock other) {
-
         Map<Integer,Integer> otherVector = ((VectorClock) other).getVector();
-        for (int pid : otherVector.keySet()) {
-            Integer clockVal = this.vector.get(pid);
-            if (clockVal == null) {
-                this.vector.put(pid, otherVector.get(pid));
-            }
-            else {
-                this.vector.put(pid, otherVector.get(pid));
-            }
-
-        }
-
         this.vector = otherVector;
-
-
     }
 
     @Override
@@ -70,12 +56,46 @@ public class VectorClock implements Clock {
         boolean equal = true;
         Set<Integer> s1 = this.vector.keySet();
         Set<Integer> s2 = ((VectorClock) other).getVector().keySet();
-        Set<Integer> commonPids = intersection(s1,s2);
-        for (int pid : commonPids) {
-            result &= this.vector.get(pid) <= otherVector.get(pid);
-            equal &= this.vector.get(pid) < otherVector.get(pid);
+        /*
+        In case that this vector contains only a subset of pids of the other processes vector
+        we only have to compare the common pids. The pids that are exclusively in 'other' must
+        have a non-zero time (see method 'addProcess()') and thus must be bigger than the implicit
+        (because non-listed) pid in 'this' clock.
+         */
+        if (s2.containsAll(s1)) {
+            for (int pid : s1) {
+                result &= this.vector.get(pid) <= otherVector.get(pid);
+            }
+            /*
+            If s1 is a proper subset of s2 it suffices to check the '<=' condition,
+            since there exists an element in s2 that is not in s1 and therefore has a
+            strictly bigger timestamp.
+             */
+            if (s1.size() < s2.size()) {
+                return result;
+            }
+            /*
+            If the keysets are indeed equal, we have to check whether all timestamps are equal.
+            If that's the case we have to return false, because according to 'Definition 3.5' of
+            Landes' paper the 'happened-before' relation is not reflexive.
+             */
+            else {
+                for (int pid : s1) {
+                    equal &= this.vector.get(pid) == otherVector.get(pid);
+                }
+                return result && !equal;
+            }
+
         }
-        return result;
+        /*
+        Otherwise there must be a pid in 'this' that is not in 'other' and therefore this pids timestamp
+        is bigger than the implicit-0-timestamp in 'other'. Therefore 'this' will never happen before
+        'other' in that case.
+         */
+        else {
+            return false;
+        }
+
     }
 
     private static <T> Set<T> intersection(Set<T> setA, Set<T> setB) {
@@ -130,7 +150,11 @@ public class VectorClock implements Clock {
     }
 
     public void addProcess(int i, int testTime) {
-        this.vector.put(i,testTime);
+        // Since the absence of a pid 'i' in the vector is equivalent to "process 'i' has clock-time 0
+        // we only add the process if testTime is >0 to improve space-efficiency.
+        // Otherwise this would lead to inconsistencies with the happenedBefore-methods.
+        if (testTime > 0)
+            this.vector.put(i,testTime);
     }
 
     public int getTime(Integer pid) {

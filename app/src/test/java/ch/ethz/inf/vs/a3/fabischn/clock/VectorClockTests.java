@@ -136,7 +136,7 @@ public class VectorClockTests {
 		}
 		Assert.assertTrue(incomingClock.happenedBefore(refClock));
 	}
-	
+
 	@Test
 	public void compareWithLaterEventMissingPids() {
 		int[] refTimes = { 71, 70, 1 };
@@ -217,7 +217,29 @@ public class VectorClockTests {
 		}
 		Assert.assertTrue(incomingClock.happenedBefore(refClock));
 	}
-	
+
+	@Test
+	public void compareWithParallelEventNoCommonPids() {
+		VectorClock refClock = new VectorClock();
+		VectorClock incomingClock = new VectorClock();
+		refClock.addProcess(1, 5);
+		incomingClock.addProcess(2, 7);
+		Assert.assertFalse(incomingClock.happenedBefore(refClock));
+	}
+
+	@Test
+	public void compareWithParallelSameTimesDifferentPids() {
+		int[] refTimes = { 71, 70, 5 };
+		int[] incomingTimes = { 71, 70, 0};
+		VectorClock refClock = new VectorClock();
+		VectorClock incomingClock = new VectorClock();
+		for (int i = 0; i < refTimes.length; i++) {
+			refClock.addProcess(i, refTimes[i]);
+			incomingClock.addProcess(i, incomingTimes[i]);
+		}
+		Assert.assertTrue(incomingClock.happenedBefore(refClock));
+	}
+
 	@Test
 	public void convertEmptyClockToString() {
 		VectorClock refClock = new VectorClock();
