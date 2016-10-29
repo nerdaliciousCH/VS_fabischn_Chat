@@ -7,6 +7,7 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
+import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
@@ -23,6 +24,7 @@ import ch.ethz.inf.vs.a3.fabischn.message.MessageTypes;
  *
  */
 
+// TODO make this
 public class UDPClient extends Thread {
 
     private static final String TAG = UDPClient.class.getSimpleName();
@@ -79,7 +81,11 @@ public class UDPClient extends Thread {
             socket.receive(packetIn);
             // TODO check for timeout
         } catch (IOException e) {
-            Log.e(TAG, "Couldn't receive", e);
+            if (e instanceof SocketTimeoutException){
+                Log.e(TAG, "Socket timed out trying to receive", e);
+            } else {
+                Log.e(TAG, "Couldn't receive", e);
+            }
             return;
         }
         Log.d(TAG, "Successfully received UDP packet");
