@@ -1,7 +1,6 @@
 package ch.ethz.inf.vs.a3.fabischn.message;
 
 import java.util.Comparator;
-import ch.ethz.inf.vs.a3.fabischn.message.Message;
 
 /**
  * Message comparator class. Use with PriorityQueue.

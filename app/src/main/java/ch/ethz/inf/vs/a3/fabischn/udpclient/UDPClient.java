@@ -1,6 +1,5 @@
 package ch.ethz.inf.vs.a3.fabischn.udpclient;
 
-import android.os.AsyncTask;
 import android.util.Log;
 
 import java.io.IOException;
@@ -9,11 +8,12 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.UnknownHostException;
-import java.util.concurrent.ExecutorCompletionService;
+import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.ThreadPoolExecutor;
+
+import ch.ethz.inf.vs.a3.fabischn.message.MessageOut;
+import ch.ethz.inf.vs.a3.fabischn.message.MessageTypes;
 
 /**
  * Created by fabian on 28.10.16.
@@ -29,13 +29,17 @@ public class UDPClient extends Thread {
     private ExecutorService mThreadPool;
     private String mServerIP;
     private int mServerPORT;
+    private String mClientUUID;
+    private String mUsername;
 
     private DatagramSocket socket = null;
 
-    public UDPClient(String ip, int port, int threadPoolSize){
+    public UDPClient(final String username, final String ip, int port, int threadPoolSize){
         mServerIP = ip;
         mServerPORT = port;
         mThreadPool = Executors.newFixedThreadPool(threadPoolSize);
+        mClientUUID = UUID.randomUUID().toString();
+        mUsername = username;
     }
 
     public void run(){
@@ -58,14 +62,9 @@ public class UDPClient extends Thread {
         // Exclusively send and receive to and from server
         socket.connect(serverIP, mServerPORT);
 
-        byte[] bufOut = new byte[NetworkConsts.PAYLOAD_SIZE];
-        byte[] bufIn = new byte[NetworkConsts.PAYLOAD_SIZE];
+        MessageOut msgOut = new MessageOut(MessageTypes.REGISTER, mUsername, mClientUUID, "Hallo Server!",serverIP, mServerPORT);
 
-        String testMsg = "Lorem Ipsum Dolor";
-        bufOut = testMsg.getBytes();
-
-        DatagramPacket packetOut = new DatagramPacket(bufOut, bufOut.length, serverIP, mServerPORT);
-        DatagramPacket packetIn = new DatagramPacket(bufIn, bufIn.length);
+        DatagramPacket packetOut = msgOut.getDatagramPacket();
         try {
             socket.send(packetOut);
         } catch (IOException e) {
@@ -75,6 +74,8 @@ public class UDPClient extends Thread {
 
         Log.d(TAG, "Successfully send UDP packet");
 
+        byte[] bufIn = new byte[NetworkConsts.PAYLOAD_SIZE];
+        DatagramPacket packetIn = new DatagramPacket(bufIn, bufIn.length);
         // TODO if server down, is he undefinitely waiting?
         try {
             socket.receive(packetIn);
@@ -82,9 +83,7 @@ public class UDPClient extends Thread {
             Log.e(TAG, "Couldn't receive", e);
             return;
         }
-
         Log.d(TAG, "Successfully received UDP packet: " + new String(packetIn.getData()));
-//        socket.getChannel()
 
     }
 
