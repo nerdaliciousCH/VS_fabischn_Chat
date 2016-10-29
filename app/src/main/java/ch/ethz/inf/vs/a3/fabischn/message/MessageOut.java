@@ -7,6 +7,7 @@ import org.json.JSONObject;
 
 import java.net.DatagramPacket;
 import java.net.InetAddress;
+import java.util.Arrays;
 
 import ch.ethz.inf.vs.a3.fabischn.udpclient.NetworkConsts;
 
@@ -64,12 +65,13 @@ public class MessageOut extends Message {
         } catch (JSONException e) {
             Log.e(TAG, "Failed writing JSON body", e);
         }
-        Log.d(TAG, "The JSON: " + mJSON.toString());
         mBuffer = mJSON.toString().getBytes().clone();
     }
 
     public DatagramPacket getDatagramPacket(){
         if (mBuffer.length <= NetworkConsts.PAYLOAD_SIZE) {
+            Log.d(TAG, toString());
+
             return new DatagramPacket(mBuffer, mBuffer.length, mServerIP, mServerPORT);
         }
         Log.e(TAG,"Message was too long!");

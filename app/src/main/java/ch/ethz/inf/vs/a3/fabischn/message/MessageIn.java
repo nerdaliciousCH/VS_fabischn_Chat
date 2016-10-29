@@ -6,6 +6,8 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.net.DatagramPacket;
+import java.nio.ByteBuffer;
+import java.util.Arrays;
 
 import ch.ethz.inf.vs.a3.fabischn.udpclient.NetworkConsts;
 
@@ -23,8 +25,11 @@ public class MessageIn extends Message {
         if (mBuffer.length > NetworkConsts.PAYLOAD_SIZE){
             //TODO throw exception?
         }
-        setMessage(mBuffer.toString());
+        mBuffer = trim(mBuffer.clone());
+
+        setMessage(new String(mBuffer));
         parseJSON();
+        Log.d(TAG, toString());
     }
 
     private void parseJSON(){
@@ -46,9 +51,24 @@ public class MessageIn extends Message {
         }
         try {
             JSONObject jsonBody = mJSON.getJSONObject(JsonFields.BODY);
-            setMessage(jsonBody.getString(JsonFields.BODY_CONTENT));
+            if (getType().equals(MessageTypes.ERROR_MESSAGE)) {
+                setMessage(jsonBody.getString(JsonFields.BODY_CONTENT));
+            }
         } catch (JSONException e) {
             Log.e(TAG, "Couldn't parse the JSON body", e);
         }
+        Log.d(TAG, "The JSON: " + mJSON.toString());
+    }
+
+    // from http://stackoverflow.com/questions/17003164/byte-array-with-padding-of-null-bytes-at-the-end-how-to-efficiently-copy-to-sma
+    static byte[] trim(byte[] bytes)
+    {
+        int i = bytes.length - 1;
+        while (i >= 0 && bytes[i] == 0)
+        {
+            --i;
+        }
+
+        return Arrays.copyOf(bytes, i + 1);
     }
 }

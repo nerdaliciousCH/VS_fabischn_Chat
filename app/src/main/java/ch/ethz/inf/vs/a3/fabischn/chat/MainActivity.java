@@ -146,6 +146,8 @@ public class MainActivity extends AppCompatActivity implements SharedPreferences
             if (!username.equals("")) {
                 UDPClient udpClient = new UDPClient(username, mChatServerIPString, mChatServerPORTInteger, 4);
                 udpClient.start();
+                // TODO use AsyncTask
+
             } else {
                 Toast.makeText(this, "Username should not be empty", Toast.LENGTH_LONG).show();
             }

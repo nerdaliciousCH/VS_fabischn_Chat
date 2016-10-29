@@ -12,6 +12,7 @@ import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import ch.ethz.inf.vs.a3.fabischn.message.MessageIn;
 import ch.ethz.inf.vs.a3.fabischn.message.MessageOut;
 import ch.ethz.inf.vs.a3.fabischn.message.MessageTypes;
 
@@ -43,8 +44,6 @@ public class UDPClient extends Thread {
     }
 
     public void run(){
-        Log.d(TAG, "Thread: " + Thread.currentThread().toString());
-        // TODO test connection
         InetAddress serverIP = null;
         try {
             serverIP = InetAddress.getByName(mServerIP);
@@ -54,6 +53,7 @@ public class UDPClient extends Thread {
         }
         try {
             socket = new DatagramSocket();
+            socket.setSoTimeout(NetworkConsts.SOCKET_TIMEOUT);
         } catch (SocketException e) {
             Log.e(TAG, "Couldn't create UDP socket" ,e);
             return;
@@ -63,7 +63,6 @@ public class UDPClient extends Thread {
         socket.connect(serverIP, mServerPORT);
 
         MessageOut msgOut = new MessageOut(MessageTypes.REGISTER, mUsername, mClientUUID, "Hallo Server!",serverIP, mServerPORT);
-
         DatagramPacket packetOut = msgOut.getDatagramPacket();
         try {
             socket.send(packetOut);
@@ -71,7 +70,6 @@ public class UDPClient extends Thread {
             Log.e(TAG, "Couldn't send", e);
             return;
         }
-
         Log.d(TAG, "Successfully send UDP packet");
 
         byte[] bufIn = new byte[NetworkConsts.PAYLOAD_SIZE];
@@ -79,11 +77,13 @@ public class UDPClient extends Thread {
         // TODO if server down, is he undefinitely waiting?
         try {
             socket.receive(packetIn);
+            // TODO check for timeout
         } catch (IOException e) {
             Log.e(TAG, "Couldn't receive", e);
             return;
         }
-        Log.d(TAG, "Successfully received UDP packet: " + new String(packetIn.getData()));
+        Log.d(TAG, "Successfully received UDP packet");
+        MessageIn msgIn = new MessageIn(packetIn);
 
     }
 

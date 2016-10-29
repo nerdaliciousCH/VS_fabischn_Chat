@@ -30,12 +30,15 @@ public abstract class Message {
 
     @Override
     public String toString() {
-        if (mJSON != null){
-            return new String(mJSON.toString());
-        }
-        else{
-            return new String("JSONObject was null");
-        }
+        StringBuilder builder = new StringBuilder();
+
+        builder.append("\t\t");
+        builder.append("The JSON (" + mJSON.toString().length() + "): " + mJSON.toString());
+        builder.append("\n");
+        builder.append("\t\t");
+        builder.append("The Buffer (" + mBuffer.length + "): " + new String(mBuffer));
+        builder.append("\n");
+        return builder.toString();
     }
 
     protected String getUsername() {
