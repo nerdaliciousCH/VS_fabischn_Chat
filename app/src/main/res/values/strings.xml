@@ -5,6 +5,10 @@
     <string name="menu_settings">Settings</string>
     <string name="label_setting_ip">Chat server\'s IP Address</string>
     <string name="label_setting_port">Chat server\'s UDP Port</string>
+    <string name="reconnect_one">Tried to connect once</string>
+    <string name="reconnect_two">Tried to connect two times</string>
+    <string name="reconnect_three">Tried to connect three times</string>
+    <string name="reconnect_four">Tried to connect four times</string>
 
     <!-- keys for preferences -->
     <string name="setting_ip">setting_ip</string>

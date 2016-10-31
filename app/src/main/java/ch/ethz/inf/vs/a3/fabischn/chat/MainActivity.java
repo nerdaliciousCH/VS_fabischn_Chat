@@ -232,38 +232,61 @@ public class MainActivity extends AppCompatActivity implements SharedPreferences
             // Exclusively send and receive to and from server
             socket.connect(serverIP, serverPort);
 
+            // create outgoing registration packet
             MessageOut msgOut = new MessageOut(MessageTypes.REGISTER, username, clientUUID, null ,serverIP, serverPort);
             DatagramPacket packetOut = msgOut.getDatagramPacket();
-            try {
-                socket.send(packetOut);
-            } catch (IOException e) {
-                Log.e(TAG, "Couldn't send", e);
-                return false;
-            }
-            Log.d(TAG, "Successfully send UDP packet");
 
-            byte[] bufIn = new byte[NetworkConsts.PAYLOAD_SIZE];
-            DatagramPacket packetIn = new DatagramPacket(bufIn, bufIn.length);
-            try {
-                socket.receive(packetIn);
-            } catch (IOException e) {
-                if (e instanceof SocketTimeoutException){
-                    Log.e(TAG, "Socket timed out trying to receive", e);
-                } else {
-                    Log.e(TAG, "Couldn't receive", e);
+            // retry variables & buffer
+            boolean gotTimeout;
+            int tries = 0;
+            byte[] bufIn = null;
+            DatagramPacket packetIn = null;
+
+            // try 5 times then stop
+            while(tries < 5) {
+                gotTimeout = false;
+                try {
+                    socket.send(packetOut);
+                } catch (IOException e) {
+                    Log.e(TAG, "Couldn't send", e);
+                    return false;
                 }
-                // stop thread
-                return false;
+                Log.d(TAG, "Successfully send UDP packet");
+                tries++;
+
+                // create input buffer, after knowing send successful
+                bufIn = new byte[NetworkConsts.PAYLOAD_SIZE];
+                packetIn = new DatagramPacket(bufIn, bufIn.length);
+
+                try {
+                    socket.receive(packetIn);
+                } catch (IOException e) {
+                    if (e instanceof SocketTimeoutException) {
+                        Log.e(TAG, "Socket timed out trying to receive", e);
+                        gotTimeout = true;
+                    } else {
+                        Log.e(TAG, "Couldn't receive", e);
+                        return false;
+                    }
+                }
+                if(!gotTimeout) break;
             }
 
             Log.d(TAG, "Successfully received UDP packet");
-            MessageIn msgIn = new MessageIn(packetIn);
-            if(msgIn.getType().equals(MessageTypes.ACK_MESSAGE)){
-                return true;
-            } else{
-                return false;
-            }
+
+            if(tries < 5) {
+              MessageIn msgIn = new MessageIn(packetIn);
+              if(msgIn.getType().equals(MessageTypes.ACK_MESSAGE)){
+                  return true;
+              } else { //TODO find out what other errors were
+                  }}
+            else {
+                  Log.e(TAG, "failed even after 5 tries");
+                  return false;
+              }
+            return true;
         }
+
 
         @Override
         protected void onPostExecute(Boolean aBoolean) {
