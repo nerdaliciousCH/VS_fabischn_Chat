@@ -253,6 +253,8 @@ public class MainActivity extends AppCompatActivity implements SharedPreferences
                 }
                 Log.d(TAG, "Successfully send UDP packet");
                 tries++;
+                publishProgress(tries);
+                Thread.yield();
 
                 // create input buffer, after knowing send successful
                 bufIn = new byte[NetworkConsts.PAYLOAD_SIZE];
@@ -282,7 +284,7 @@ public class MainActivity extends AppCompatActivity implements SharedPreferences
                   }}
             else {
                   Log.e(TAG, "failed even after 5 tries");
-                  return false;
+                return false;
               }
             return true;
         }
@@ -295,7 +297,29 @@ public class MainActivity extends AppCompatActivity implements SharedPreferences
 
         @Override
         protected void onProgressUpdate(Integer... values) {
-            super.onProgressUpdate(values);
+            // FIXME hard (why only updates at  4th try?)
+           // super.onProgressUpdate(values);
+            switch (values[0].intValue()) {
+                case 1:
+                    mButtonJoin.setText(getResources().getString(R.string.reconnect_one));
+                    Log.d(TAG, "reconnect 1");
+                    break;
+                case 2:
+                    mButtonJoin.setText(getResources().getString(R.string.reconnect_two));
+                    Log.d(TAG, "reconnect 2");
+                    break;
+                case 3:
+                    mButtonJoin.setText(getResources().getString(R.string.reconnect_three));
+                    Log.d(TAG, "reconnect 3");
+                    break;
+                case 4:
+                    mButtonJoin.setText(getResources().getString(R.string.reconnect_four));
+                    Log.d(TAG, "reconnect 4");
+                    break;
+                default:
+                    Log.d(TAG,">4 tries currently");
+                    break;
+            }
         }
     }
 
