@@ -15,6 +15,8 @@ import ch.ethz.inf.vs.a3.fabischn.udpclient.UDPClient;
 
 public class ChatActivity extends AppCompatActivity {
 
+    private static final String TAG = ChatActivity.class.getSimpleName();
+
     private String mServerIP;
     private int mServerPORT;
     private String mClientUUID;
@@ -35,8 +37,9 @@ public class ChatActivity extends AppCompatActivity {
         mServerIP = mSharedPreferences.getString(getResources().getString(R.string.setting_ip), "no ip");
         mServerPORT = Integer.parseInt(mSharedPreferences.getString(getResources().getString(R.string.setting_port), "no port"));
 
+        Log.d(TAG, "IP: " + mServerIP + "\n" + "Port: " + mServerPORT + "\n" + "username: " + mUsername + "\n" + "UUID: " + mClientUUID + "\n");
         // TODO use handler?
-        UDPClient udpClient = new UDPClient(mUsername, mServerIP, mServerPORT, null);
+//        UDPClient udpClient = new UDPClient(mUsername, mServerIP, mServerPORT, null);
 
     }
 

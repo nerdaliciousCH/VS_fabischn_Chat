@@ -161,6 +161,8 @@ public class MainActivity extends AppCompatActivity implements SharedPreferences
     public void onClick(View v) {
         if (v.getId() == R.id.btn_join) {
             String username = mEditTextUsername.getText().toString();
+
+            // TODO maybe safe alread used and registered pairs of usernames and UUIDs for reconnecting?
             if (!username.equals("")) {
                 String clientUUID = UUID.randomUUID().toString();
                 ServerConnectionTask connectToServer = new ServerConnectionTask();

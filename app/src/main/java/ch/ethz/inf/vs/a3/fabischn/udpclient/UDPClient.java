@@ -42,6 +42,9 @@ public class UDPClient extends Thread {
 
     private DatagramSocket socket = null;
 
+    // TODO make this an AsyncTask to get Chatlog
+    // run until timeout on receive -> got all messages
+
     public UDPClient(final String username, final String ip, int port, Handler handler){
         mServerIP = ip;
         mServerPORT = port;
@@ -71,7 +74,7 @@ public class UDPClient extends Thread {
         // Exclusively send and receive to and from server
         socket.connect(serverIP, mServerPORT);
 
-        MessageOut msgOut = new MessageOut(MessageTypes.REGISTER, mUsername, mClientUUID, null ,serverIP, mServerPORT);
+        MessageOut msgOut = new MessageOut(MessageTypes.RETRIEVE_CHAT_LOG, mUsername, mClientUUID, null ,serverIP, mServerPORT);
         DatagramPacket packetOut = msgOut.getDatagramPacket();
         try {
             socket.send(packetOut);
