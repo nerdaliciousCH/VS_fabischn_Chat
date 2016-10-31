@@ -41,7 +41,7 @@ public abstract class Message {
         return builder.toString();
     }
 
-    protected String getUsername() {
+    public String getUsername() {
         return mUsername;
     }
 
@@ -49,7 +49,7 @@ public abstract class Message {
         this.mUsername = mUsername;
     }
 
-    protected String getUUID() {
+    public String getUUID() {
         return mUUID;
     }
 
@@ -57,7 +57,7 @@ public abstract class Message {
         this.mUUID = mUUID;
     }
 
-    protected String getTimestamp() {
+    public String getTimestamp() {
         return mTimestamp;
     }
 
@@ -65,7 +65,7 @@ public abstract class Message {
         this.mTimestamp = mTimestamp;
     }
 
-    protected String getType() {
+    public String getType() {
         return mType;
     }
 
@@ -73,7 +73,7 @@ public abstract class Message {
         this.mType = mMessageType;
     }
 
-    protected String getMessage(){
+    public String getMessage(){
         return mMessage;
     }
 

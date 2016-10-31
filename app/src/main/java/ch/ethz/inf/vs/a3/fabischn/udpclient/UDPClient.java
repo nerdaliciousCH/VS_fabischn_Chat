@@ -1,5 +1,7 @@
 package ch.ethz.inf.vs.a3.fabischn.udpclient;
 
+import android.os.Handler;
+import android.os.Message;
 import android.util.Log;
 
 import java.io.IOException;
@@ -29,24 +31,28 @@ public class UDPClient extends Thread {
 
     private static final String TAG = UDPClient.class.getSimpleName();
 
-    private ExecutorService mThreadPool;
     private String mServerIP;
     private int mServerPORT;
     private String mClientUUID;
     private String mUsername;
 
+    private Handler mHandler;
+
+    private volatile boolean mRunning;
+
     private DatagramSocket socket = null;
 
-    public UDPClient(final String username, final String ip, int port, int threadPoolSize){
+    public UDPClient(final String username, final String ip, int port, Handler handler){
         mServerIP = ip;
         mServerPORT = port;
-        mThreadPool = Executors.newFixedThreadPool(threadPoolSize);
         mClientUUID = UUID.randomUUID().toString();
         mUsername = username;
+        mHandler = handler;
     }
 
     public void run(){
         InetAddress serverIP = null;
+        mRunning = true;
         try {
             serverIP = InetAddress.getByName(mServerIP);
         } catch (UnknownHostException e) {
@@ -61,10 +67,11 @@ public class UDPClient extends Thread {
             return;
         }
 
+        // TODO put all below into a tight loop and handle interrupt to stop thread
         // Exclusively send and receive to and from server
         socket.connect(serverIP, mServerPORT);
 
-        MessageOut msgOut = new MessageOut(MessageTypes.REGISTER, mUsername, mClientUUID, "Hallo Server!",serverIP, mServerPORT);
+        MessageOut msgOut = new MessageOut(MessageTypes.REGISTER, mUsername, mClientUUID, null ,serverIP, mServerPORT);
         DatagramPacket packetOut = msgOut.getDatagramPacket();
         try {
             socket.send(packetOut);
@@ -76,25 +83,32 @@ public class UDPClient extends Thread {
 
         byte[] bufIn = new byte[NetworkConsts.PAYLOAD_SIZE];
         DatagramPacket packetIn = new DatagramPacket(bufIn, bufIn.length);
-        // TODO if server down, is he undefinitely waiting?
         try {
             socket.receive(packetIn);
-            // TODO check for timeout
         } catch (IOException e) {
             if (e instanceof SocketTimeoutException){
                 Log.e(TAG, "Socket timed out trying to receive", e);
-            } else {
+         } else {
                 Log.e(TAG, "Couldn't receive", e);
             }
+            // stop thread
             return;
         }
+
         Log.d(TAG, "Successfully received UDP packet");
         MessageIn msgIn = new MessageIn(packetIn);
+//        mHandler.sendMessage(Message.obtain(mHandler, 99, "blubb"));
+        Log.d(TAG, "Send a android.os.Message to the MainActivity");
+    }
 
+    public void close(){
+        mRunning = false;
+        socket.close();
     }
 
     @Override
     public void interrupt() {
         super.interrupt();
+        // TODO stop thread
     }
 }

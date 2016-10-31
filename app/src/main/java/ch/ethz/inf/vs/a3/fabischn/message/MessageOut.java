@@ -47,7 +47,7 @@ public class MessageOut extends Message {
 
         JSONObject jsonBody = new JSONObject();
 
-        if (getType().equals(MessageTypes.CHAT_MESSAGE)){
+        if (getType().equals(MessageTypes.CHAT_MESSAGE) && msg != null){
             jsonBody.put(JsonFields.BODY_CONTENT, msg);
         }
         return jsonBody;
