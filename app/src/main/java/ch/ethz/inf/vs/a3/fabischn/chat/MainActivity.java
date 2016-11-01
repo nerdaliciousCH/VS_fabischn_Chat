@@ -1,12 +1,10 @@
 package ch.ethz.inf.vs.a3.fabischn.chat;
 
-import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.AsyncTask;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.Message;
 import android.preference.PreferenceManager;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
@@ -25,13 +23,13 @@ import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
 import java.util.UUID;
-import java.util.concurrent.ExecutionException;
 
+import ch.ethz.inf.vs.a3.fabischn.message.ErrorCodes;
 import ch.ethz.inf.vs.a3.fabischn.message.MessageIn;
 import ch.ethz.inf.vs.a3.fabischn.message.MessageOut;
 import ch.ethz.inf.vs.a3.fabischn.message.MessageTypes;
+import ch.ethz.inf.vs.a3.fabischn.udpclient.ConnectionParameters;
 import ch.ethz.inf.vs.a3.fabischn.udpclient.NetworkConsts;
-import ch.ethz.inf.vs.a3.fabischn.udpclient.UDPClient;
 
 public class MainActivity extends AppCompatActivity implements SharedPreferences.OnSharedPreferenceChangeListener, Button.OnClickListener {
 
@@ -41,9 +39,12 @@ public class MainActivity extends AppCompatActivity implements SharedPreferences
     private static String KEY_SETTING_IP;
     private static String KEY_SETTING_PORT;
 
-    private String mChatServerIPString;
-    private String mChatServerPORTString;
-    private int mChatServerPORTInteger;
+    private String mServerIP;
+    private int mServerPORT;
+
+    private String mClientUUID;
+    private String mUsername;
+
 
     private EditText mEditTextUsername;
     private Button mButtonJoin;
@@ -56,32 +57,14 @@ public class MainActivity extends AppCompatActivity implements SharedPreferences
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        KEY_SETTING_IP = getResources().getString(R.string.setting_ip);
-        KEY_SETTING_PORT = getResources().getString(R.string.setting_port);
+        KEY_SETTING_IP = getString(R.string.setting_ip);
+        KEY_SETTING_PORT = getString(R.string.setting_port);
 
         mEditTextUsername = (EditText) findViewById(R.id.edittext_username);
         mButtonJoin = (Button) findViewById(R.id.btn_join);
 
         PreferenceManager.setDefaultValues(this, R.xml.preferences, false);
         mSharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
-
-//        Log.d(TAG, "onCreate");
-//        if (savedInstanceState != null) {
-//            Log.d(TAG,"bundle is here");
-//            String text = savedInstanceState.getString("username");
-//            Log.d(TAG, "loaded username: " + text);
-//            if (text != null && !text.equals("")) {
-//                mEditTextUsername.setText(text);
-//            }
-//        } else{
-//            Log.d(TAG,"bundle null");
-//        }
-
-    }
-
-    @Override
-    protected void onRestart() {
-        super.onRestart();
     }
 
     @Override
@@ -89,11 +72,11 @@ public class MainActivity extends AppCompatActivity implements SharedPreferences
         super.onResume();
         Log.d(TAG, "onResume");
         mSharedPreferences.registerOnSharedPreferenceChangeListener(this);
-        mChatServerIPString = mSharedPreferences.getString(KEY_SETTING_IP, "no ip");
-        mChatServerPORTString = mSharedPreferences.getString(KEY_SETTING_PORT, "no port");
 
-        mChatServerPORTInteger = Integer.parseInt(mChatServerPORTString);
-        updateJoinButton();
+        // TODO maybe we are connecting? Button might show something else...
+        mServerIP = getSettingsIP();
+        mServerPORT = getSettingsPORT();
+        updateJoinButtonServerAddress();
     }
 
     @Override
@@ -102,29 +85,6 @@ public class MainActivity extends AppCompatActivity implements SharedPreferences
         super.onPause();
     }
 
-//    @Override
-//    protected void onRestoreInstanceState(Bundle savedInstanceState) {
-//        super.onRestoreInstanceState(savedInstanceState);
-//        Log.d(TAG,"onRestoreInstanceState");
-//        if (savedInstanceState != null) {
-//            Log.d(TAG,"bundle is here");
-//            String text = savedInstanceState.getString("username");
-//            Log.d(TAG, "loaded username: " + text);
-//            if (text != null && !text.equals("")) {
-//                mEditTextUsername.setText(text);
-//            }
-//        } else{
-//            Log.d(TAG,"bundle null");
-//        }
-//
-//    }
-
-//    @Override
-//    protected void onSaveInstanceState(Bundle outState) {
-//        super.onSaveInstanceState(outState);
-//        Log.d(TAG,"onSaveInstanceState");
-//        outState.putString("username", mEditTextUsername.getText().toString());
-//    }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -147,67 +107,82 @@ public class MainActivity extends AppCompatActivity implements SharedPreferences
     @Override
     public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
         if (key == KEY_SETTING_IP) {
-            mChatServerIPString = mSharedPreferences.getString(KEY_SETTING_IP, "no ip");
-            updateJoinButton();
+            mServerIP = getSettingsIP();
+            updateJoinButtonServerAddress();
         }
-
         if (key == KEY_SETTING_PORT) {
-            mChatServerPORTString = mSharedPreferences.getString(KEY_SETTING_PORT, "no port");
-            updateJoinButton();
+            mServerPORT = getSettingsPORT();
+            updateJoinButtonServerAddress();
         }
     }
 
     @Override
     public void onClick(View v) {
         if (v.getId() == R.id.btn_join) {
-            String username = mEditTextUsername.getText().toString();
 
-            // TODO maybe safe alread used and registered pairs of usernames and UUIDs for reconnecting?
-            if (!username.equals("")) {
-                String clientUUID = UUID.randomUUID().toString();
-                ServerConnectionTask connectToServer = new ServerConnectionTask();
-                connectToServer.execute(new ConnectionParameters(mChatServerIPString, mChatServerPORTInteger, clientUUID, username));
-                boolean registered = false;
-                try {
-                    registered = connectToServer.get();
+            // TODO maybe nicer UI, some kind of rotating busy sign?
+            // TODO set it on OK of edittext instead of this ugly piece...
+            mUsername = mEditTextUsername.getText().toString();
 
-                } catch (InterruptedException e) {
-                    // TODO Handle this correctly
-                    Log.e(TAG, "Got interrupted", e);
-                } catch (ExecutionException e) {
-                    Log.e(TAG, "Exploded during execution of AsyncTask", e);
-                }
+            // TODO regex match the name
+            if (!(mUsername.equals("") || mUsername.contains("\n") || mUsername.contains("\t"))) {
+                mButtonJoin.setText(getString(R.string.trying_connect));
+                disableUI();
 
-                if (registered) {
-                    Log.d(TAG, "succesfully registered");
-                    Intent intent = new Intent(this, ChatActivity.class);
-                    intent.putExtra("username", username);
-                    intent.putExtra("uuid", clientUUID);
-                    startActivity(intent);
-                } else{
-                    // TODO get error code and say more about why it didn't work
-                    Log.d(TAG, "something went wrong trying to register");
-                    Toast.makeText(this, "Couldn't join the chat", Toast.LENGTH_LONG).show();
-                }
+                mClientUUID = UUID.randomUUID().toString();
+                ServerConnectionTask connectToServer = new ServerConnectionTask(this);
+                connectToServer.execute(new ConnectionParameters(mServerIP, mServerPORT, mClientUUID, mUsername));
             } else {
-                Toast.makeText(this, "Username should not be empty", Toast.LENGTH_LONG).show();
+                Toast.makeText(this, "Username should not be empty, or contain spaces, or span several lines", Toast.LENGTH_LONG).show();
             }
 
         }
     }
 
-    public void updateJoinButton() {
-        mButtonJoin.setText("Join Chat @ " + mChatServerIPString + ":" + mChatServerPORTString);
+    public void updateJoinButtonServerAddress() {
+        mButtonJoin.setText("Join Chat @ " + mServerIP + ":" + mServerPORT);
     }
 
-    private class ServerConnectionTask extends AsyncTask<ConnectionParameters, Integer, Boolean> {
+    public void disableUI(){
+        mButtonJoin.setEnabled(false);
+        mEditTextUsername.setEnabled(false);
+    }
+
+    public void resetUI(){
+        mButtonJoin.setText(getString(R.string.join_chat));
+    }
+
+    public void enableUI(){
+        mButtonJoin.setEnabled(true);
+        mEditTextUsername.setEnabled(true);
+    }
+
+
+    public String getSettingsIP(){
+        // TODO sanity checks
+        return mSharedPreferences.getString(KEY_SETTING_IP, "no ip");
+    }
+
+    public int getSettingsPORT(){
+        // TODO sanity checks
+        return Integer.parseInt(mSharedPreferences.getString(KEY_SETTING_PORT, "0"));
+    }
+
+    public class ServerConnectionTask extends AsyncTask<ConnectionParameters, Integer, ConnectionResult> {
+
+        // TODO AsyncTask and Screenrotation :(
+        private final String TAG = ServerConnectionTask.class.getSimpleName();
+
+        private Context context;
 
         private DatagramSocket socket = null;
 
-        @Override
-        protected Boolean doInBackground(ConnectionParameters... params){
+        public ServerConnectionTask(Context context) {
+            this.context = context;
+        }
 
-            // TODO try register 5 times, use onProgressUpdate to notify how many tries we had
+        @Override
+        public ConnectionResult doInBackground(ConnectionParameters... params) {
 
             String serverIPString = params[0].getServerIP();
             int serverPort = params[0].getServerPORT();
@@ -218,44 +193,47 @@ public class MainActivity extends AppCompatActivity implements SharedPreferences
             try {
                 serverIP = InetAddress.getByName(serverIPString);
             } catch (UnknownHostException e) {
-                Log.e(TAG, "Hmmm... unknown host", e);
-                return false;
+                Log.e(TAG, "Unknown Host, couldn't parse IP", e);
+                return new ConnectionResult(false, ConnectionResult.NO_ERROR);
             }
             try {
                 socket = new DatagramSocket();
                 socket.setSoTimeout(NetworkConsts.SOCKET_TIMEOUT);
             } catch (SocketException e) {
-                Log.e(TAG, "Couldn't create UDP socket" ,e);
-                return false;
+                Log.e(TAG, "Couldn't create UDP socket", e);
+                return new ConnectionResult(false, ConnectionResult.NO_ERROR);
             }
 
             // Exclusively send and receive to and from server
             socket.connect(serverIP, serverPort);
 
+
             // create outgoing registration packet
-            MessageOut msgOut = new MessageOut(MessageTypes.REGISTER, username, clientUUID, null ,serverIP, serverPort);
+            // we can safely retransmit the same object multiple times
+            MessageOut msgOut = new MessageOut(MessageTypes.REGISTER, username, clientUUID, null, serverIP, serverPort);
             DatagramPacket packetOut = msgOut.getDatagramPacket();
 
-            // retry variables & buffer
+            // variables for retries & packet buffer
             boolean gotTimeout;
             int tries = 0;
-            byte[] bufIn = null;
+            byte[] bufIn;
             DatagramPacket packetIn = null;
 
-            // try 5 times then stop
-            while(tries < 5) {
+            // try 5 times, then stop
+            while (tries < 5) {
                 gotTimeout = false;
                 try {
                     socket.send(packetOut);
                 } catch (IOException e) {
                     Log.e(TAG, "Couldn't send", e);
-                    return false;
+                    return new ConnectionResult(false, ConnectionResult.NO_ERROR);
                 }
-                Log.d(TAG, "Successfully send UDP packet");
                 tries++;
-                publishProgress(tries);
-                Thread.yield();
 
+                // Let UI thread know, that we are still trying to connect
+                publishProgress(tries);
+
+                // TODO can we recycle it?
                 // create input buffer, after knowing send successful
                 bufIn = new byte[NetworkConsts.PAYLOAD_SIZE];
                 packetIn = new DatagramPacket(bufIn, bufIn.length);
@@ -264,95 +242,106 @@ public class MainActivity extends AppCompatActivity implements SharedPreferences
                     socket.receive(packetIn);
                 } catch (IOException e) {
                     if (e instanceof SocketTimeoutException) {
-                        Log.e(TAG, "Socket timed out trying to receive", e);
+                        Log.d(TAG, "Socket TIMEOUT");
                         gotTimeout = true;
                     } else {
                         Log.e(TAG, "Couldn't receive", e);
-                        return false;
+                        return new ConnectionResult(false, ConnectionResult.NO_ERROR);
                     }
                 }
-                if(!gotTimeout) break;
+                if (!gotTimeout) {
+                    // if we are here, we had no exception and received a valid UDP packet
+                    break;
+                }
             }
 
-            Log.d(TAG, "Successfully received UDP packet");
-
-            if(tries < 5) {
-              MessageIn msgIn = new MessageIn(packetIn);
-              if(msgIn.getType().equals(MessageTypes.ACK_MESSAGE)){
-                  return true;
-              } else { //TODO find out what other errors were
-                  }}
-            else {
-                  Log.e(TAG, "failed even after 5 tries");
-                return false;
-              }
-            return true;
+            if (tries < 5) {
+                MessageIn msgIn = new MessageIn(packetIn);
+                switch (msgIn.getType()) {
+                    case MessageTypes.ACK_MESSAGE:
+                        return new ConnectionResult(true, ConnectionResult.NO_ERROR);
+                    case MessageTypes.ERROR_MESSAGE:
+                        return new ConnectionResult(false, Integer.parseInt(msgIn.getMessage()));
+                    default:
+                        Log.e(TAG, "Switch default case. We shouldn't be here. Think harder!");
+                        return new ConnectionResult(false, ConnectionResult.NO_ERROR);
+                }
+            } else {
+                Log.e(TAG, "Server did not respond. Got 5 timeouts");
+                return new ConnectionResult(false, ConnectionResult.NO_ERROR);
+            }
         }
 
 
         @Override
-        protected void onPostExecute(Boolean aBoolean) {
+        public void onPostExecute(ConnectionResult result) {
             socket.close();
+            if (result.getRegisterStatus()){
+                Intent intent = new Intent(context, ChatActivity.class);
+                intent.putExtra("username", mUsername);
+                intent.putExtra("uuid", mClientUUID);
+                startActivity(intent);
+            } else {
+                int errorCode = result.getErrorCode();
+                String errorMessage = "";
+                if (errorCode >= 0 && errorCode < 5){
+                    errorMessage = ErrorCodes.getStringError(errorCode);
+                } else{
+                    // TODO custom errors, maybe distinct between several network errors?
+                    errorMessage = "Communication failed";
+                }
+                Toast.makeText(context, "Couldn't join the chat: " + errorMessage, Toast.LENGTH_LONG).show();
+                resetUI();
+                enableUI();
+            }
         }
 
         @Override
-        protected void onProgressUpdate(Integer... values) {
-            // FIXME hard (why only updates at  4th try?)
-           // super.onProgressUpdate(values);
+        public void onProgressUpdate(Integer... values) {
+
+            // TODO maybe nicer UI, some kind of rotating busy sign?
             switch (values[0].intValue()) {
                 case 1:
-                    mButtonJoin.setText(getResources().getString(R.string.reconnect_one));
+                    mButtonJoin.setText(getString(R.string.reconnect_one));
                     Log.d(TAG, "reconnect 1");
                     break;
                 case 2:
-                    mButtonJoin.setText(getResources().getString(R.string.reconnect_two));
+                    mButtonJoin.setText(getString(R.string.reconnect_two));
                     Log.d(TAG, "reconnect 2");
                     break;
                 case 3:
-                    mButtonJoin.setText(getResources().getString(R.string.reconnect_three));
+                    mButtonJoin.setText(getString(R.string.reconnect_three));
                     Log.d(TAG, "reconnect 3");
                     break;
                 case 4:
-                    mButtonJoin.setText(getResources().getString(R.string.reconnect_four));
+                    mButtonJoin.setText(getString(R.string.reconnect_four));
                     Log.d(TAG, "reconnect 4");
                     break;
                 default:
-                    Log.d(TAG,">4 tries currently");
+                    Log.d(TAG, ">4 tries currently");
                     break;
             }
         }
     }
 
-    public class ConnectionParameters{
+    private class ConnectionResult {
+        private static final int NO_ERROR = -1;
+        private final boolean mRegistered;
+        private final int mErrorCode;
 
-        private String mServerIP;
-        private int mServerPORT;
-        private String mClientUUID;
-        private String mUsername;
-
-        public ConnectionParameters(String serverIP, int serverPORT, String clientUUID, String username){
-            mServerIP = serverIP;
-            mServerPORT = serverPORT;
-            mClientUUID = clientUUID;
-            mUsername = username;
+        private ConnectionResult(final boolean registered, final int errorCode){
+            mRegistered = registered;
+            mErrorCode = errorCode;
         }
 
-
-        public String getServerIP() {
-            return mServerIP;
+        public boolean getRegisterStatus(){
+            return mRegistered;
         }
 
-        public int getServerPORT() {
-            return mServerPORT;
+        public int getErrorCode(){
+            return mErrorCode;
         }
 
-        public String getClientUUID() {
-            return mClientUUID;
-        }
-
-        public String getUsername() {
-            return mUsername;
-        }
     }
 
 }

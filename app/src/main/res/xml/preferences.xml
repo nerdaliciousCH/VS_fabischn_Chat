@@ -5,13 +5,13 @@
         android:id="@+id/edittext_pref_ip"
         android:key="@string/setting_ip"
         android:title="@string/label_setting_ip"
-        android:defaultValue="127.0.66.1"
+        android:defaultValue="10.0.2.2"
         android:digits="0123456789."
         />
     <EditTextPreference
         android:id="@+id/edittext_pref_port"
         android:key="@string/setting_port"
         android:title="@string/label_setting_port"
-        android:defaultValue="6666"
+        android:defaultValue="4446"
         android:inputType="number"/>
 </PreferenceScreen>

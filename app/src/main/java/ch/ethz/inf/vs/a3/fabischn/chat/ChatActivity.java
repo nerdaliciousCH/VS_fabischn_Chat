@@ -1,17 +1,17 @@
 package ch.ethz.inf.vs.a3.fabischn.chat;
 
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
-
-import org.w3c.dom.Text;
 
 import java.io.IOException;
 import java.net.DatagramPacket;
@@ -31,6 +31,9 @@ import ch.ethz.inf.vs.a3.fabischn.udpclient.NetworkConsts;
 public class ChatActivity extends AppCompatActivity implements Button.OnClickListener{
 
     private static final String TAG = ChatActivity.class.getSimpleName();
+
+    private static String KEY_SETTING_IP;
+    private static String KEY_SETTING_PORT;
 
     private String mServerIP;
     private int mServerPORT;
@@ -53,13 +56,16 @@ public class ChatActivity extends AppCompatActivity implements Button.OnClickLis
         setContentView(R.layout.activity_chat);
         Intent intent = getIntent();
 
-        // TODO get serialized object from
         mClientUUID = intent.getStringExtra("uuid");
         mUsername = intent.getStringExtra("username");
 
+        KEY_SETTING_IP = getString(R.string.setting_ip);
+        KEY_SETTING_PORT = getString(R.string.setting_port);
+
         mSharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
-        mServerIP = mSharedPreferences.getString(getResources().getString(R.string.setting_ip), "no ip");
-        mServerPORT = Integer.parseInt(mSharedPreferences.getString(getResources().getString(R.string.setting_port), "no port"));
+
+        mServerIP = mSharedPreferences.getString(KEY_SETTING_IP, "no ip");
+        mServerPORT = Integer.parseInt(mSharedPreferences.getString(KEY_SETTING_PORT, "no port"));
 
         mTextUsername = (TextView) findViewById(R.id.text_username);
         mTextServer = (TextView) findViewById(R.id.text_server);
@@ -70,8 +76,6 @@ public class ChatActivity extends AppCompatActivity implements Button.OnClickLis
         // FIXME maybe onResume?
         mTextUsername.setText(mUsername);
         mTextServer.setText(mServerIP + ":" + mServerPORT);
-
-
 
         Log.d(TAG, "IP: " + mServerIP + "\n" + "Port: " + mServerPORT + "\n" + "username: " + mUsername + "\n" + "UUID: " + mClientUUID + "\n");
     }
@@ -84,6 +88,22 @@ public class ChatActivity extends AppCompatActivity implements Button.OnClickLis
             FetchChatlogTask fetchChatlogTask = new FetchChatlogTask();
             fetchChatlogTask.execute(new ConnectionParameters(mServerIP, mServerPORT, mClientUUID, mUsername));
         }
+    }
+
+    @Override
+    public void onBackPressed() {
+        Log.d(TAG, "onBackPressed");
+        // from http://stackoverflow.com/questions/6413700/android-proper-way-to-use-onbackpressed
+        new AlertDialog.Builder(this)
+                .setTitle("Really Exit?")
+                .setMessage("Are you sure you want to exit?")
+                .setNegativeButton(android.R.string.no, null)
+                .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
+
+                    public void onClick(DialogInterface arg0, int arg1) {
+                        ChatActivity.super.onBackPressed();
+                    }
+                }).create().show();
     }
 
     private class FetchChatlogTask extends AsyncTask<ConnectionParameters, Integer, ArrayList<MessageIn>> {
@@ -158,6 +178,8 @@ public class ChatActivity extends AppCompatActivity implements Button.OnClickLis
         @Override
         protected void onPostExecute(ArrayList<MessageIn> messageIns) {
             StringBuilder builder = new StringBuilder();
+
+            // TODO order messages, using priority queue and messagecomparator
             if (messageIns != null && !messageIns.isEmpty()){
                 for (MessageIn msg : messageIns){
                     Log.d(TAG, "Message: " + msg.getMessage());
