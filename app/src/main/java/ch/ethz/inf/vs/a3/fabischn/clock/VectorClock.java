@@ -1,12 +1,9 @@
 package ch.ethz.inf.vs.a3.fabischn.clock;
 
-import android.util.Log;
-
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.Vector;
 
 
 /**
@@ -150,10 +147,6 @@ public class VectorClock implements Clock {
     }
 
     public void addProcess(int i, int testTime) {
-        // Since the absence of a pid 'i' in the vector is equivalent to "process 'i' has clock-time 0
-        // we only add the process if testTime is >0 to improve space-efficiency.
-        // Otherwise this would lead to inconsistencies with the happenedBefore-methods.
-        if (testTime > 0)
             this.vector.put(i,testTime);
     }
 
