@@ -21,14 +21,24 @@
         android:layout_height="wrap_content"
         android:text="@string/get_chat_log"
         android:onClick="onClick"/>
-    <!-- TODO how does scrolling work? -->
+    <RelativeLayout
+        android:id="@+id/layout_chat_loading_bar"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center" >
+        <ProgressBar
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:indeterminate="true" />
+    </RelativeLayout>
     <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="wrap_content">
+        android:layout_height="wrap_content"
+        android:scrollbars="vertical"
+        android:fillViewport="true">
         <TextView android:id="@+id/text_chatlog"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:maxLines="3"
-            android:scrollbars="vertical"/>
+            android:maxLines="30" />
     </ScrollView>
 </LinearLayout>

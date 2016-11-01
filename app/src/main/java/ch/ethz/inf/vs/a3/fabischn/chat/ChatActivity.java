@@ -15,6 +15,7 @@ import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
+import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -59,6 +60,9 @@ public class ChatActivity extends AppCompatActivity implements Button.OnClickLis
 
     private Button mButtonChatlog;
 
+    private RelativeLayout mLayoutProgressBar;
+
+
     private SharedPreferences mSharedPreferences;
 
     @Override
@@ -81,6 +85,8 @@ public class ChatActivity extends AppCompatActivity implements Button.OnClickLis
         mTextServer = (TextView) findViewById(R.id.text_server);
         mTextChatlog = (TextView) findViewById(R.id.text_chatlog);
         mButtonChatlog = (Button) findViewById(R.id.btn_chatlog);
+        mLayoutProgressBar = (RelativeLayout) findViewById(R.id.layout_chat_loading_bar);
+        mLayoutProgressBar.setVisibility(View.GONE);
 
 
         mTextUsername.setText(mUsername);
@@ -90,10 +96,15 @@ public class ChatActivity extends AppCompatActivity implements Button.OnClickLis
     }
 
     @Override
+    protected void onResume() {
+        // TODO test lifecycle, look at MainActivity
+        super.onResume();
+    }
+
+    @Override
     public void onClick(View v) {
         if (v.getId() == R.id.btn_chatlog) {
-            mButtonChatlog.setText(getString(R.string.fetching_chat_log));
-            mButtonChatlog.setEnabled(false);
+            disableUIforFetch();
             FetchChatlogTask fetchChatlogTask = new FetchChatlogTask();
             fetchChatlogTask.execute(new ConnectionParameters(mServerIP, mServerPORT, mClientUUID, mUsername));
         }
@@ -117,6 +128,19 @@ public class ChatActivity extends AppCompatActivity implements Button.OnClickLis
                 return true;
         }
         return false;
+    }
+
+    public void disableUIforFetch(){
+        mTextChatlog.setText("");
+        mLayoutProgressBar.setVisibility(View.VISIBLE);
+        mButtonChatlog.setText(getString(R.string.fetching_chat_log));
+        mButtonChatlog.setEnabled(false);
+    }
+
+    public void readyUIforFetch(){
+        mLayoutProgressBar.setVisibility(View.GONE);
+        mButtonChatlog.setText(getString(R.string.get_chat_log));
+        mButtonChatlog.setEnabled(true);
     }
 
     private void deregister() {
@@ -186,7 +210,7 @@ public class ChatActivity extends AppCompatActivity implements Button.OnClickLis
                     messages.add(new MessageIn(packetIn));
                 } catch (IOException e) {
                     if (e instanceof SocketTimeoutException) {
-                        Log.e(TAG, "Socket timed out trying to receive", e);
+                        Log.e(TAG, "Socket timed out trying to receive");
                         return messages;
                     } else {
                         Log.e(TAG, "Couldn't receive", e);
@@ -208,18 +232,15 @@ public class ChatActivity extends AppCompatActivity implements Button.OnClickLis
                 builder.deleteCharAt(builder.length() - 1);
                 mTextChatlog.setText(builder.toString());
             }
-            // TODO check scrollable view
 
             // Reset UI
             mTextChatlog.setText(builder.toString());
-            mButtonChatlog.setText(getString(R.string.get_chat_log));
-            mButtonChatlog.setEnabled(true);
+            readyUIforFetch();
         }
 
     }
 
     private class DeregisterFromServerTask extends AsyncTask<ConnectionParameters, Void, ConnectionResult> {
-
 
         private Context context;
         private DatagramSocket socket;
@@ -301,11 +322,11 @@ public class ChatActivity extends AppCompatActivity implements Button.OnClickLis
             if (connectionResult.getRegisterStatus()) {
                 switch (source) {
                     case NAV_UP:
-                        // TODO main will be created and resumed
+                        // TODO: MainActivity will be created and resumed
                         NavUtils.navigateUpFromSameTask((Activity) context);
                         break;
                     case SYSTEM_BACK:
-                        // TODO main will be resumed
+                        // TODO: MainActivity will be resumed
                         ChatActivity.super.onBackPressed();
                         break;
                     default:

@@ -13,6 +13,8 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.LinearLayout;
+import android.widget.RelativeLayout;
 import android.widget.Toast;
 
 import java.io.IOException;
@@ -49,6 +51,7 @@ public class MainActivity extends AppCompatActivity implements SharedPreferences
 
     private EditText mEditTextUsername;
     private Button mButtonJoin;
+    private RelativeLayout mLayoutProgressBar;
 
     private SharedPreferences mSharedPreferences;
 
@@ -64,6 +67,8 @@ public class MainActivity extends AppCompatActivity implements SharedPreferences
 
         mEditTextUsername = (EditText) findViewById(R.id.edittext_username);
         mButtonJoin = (Button) findViewById(R.id.btn_join);
+        mLayoutProgressBar = (RelativeLayout) findViewById(R.id.layout_main_loading_bar);
+        mLayoutProgressBar.setVisibility(View.GONE);
 
         PreferenceManager.setDefaultValues(this, R.xml.preferences, false);
         mSharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
@@ -71,6 +76,7 @@ public class MainActivity extends AppCompatActivity implements SharedPreferences
 
     @Override
     protected void onResume() {
+        // TODO test lifecycle
         super.onResume();
         Log.d(TAG, "onResume");
         mSharedPreferences.registerOnSharedPreferenceChangeListener(this);
@@ -78,12 +84,15 @@ public class MainActivity extends AppCompatActivity implements SharedPreferences
         mServerPORT = getSettingsPORT();
         updateJoinButtonServerAddress();
         enableUI();
+
+        // TODO RESUME ASYNCTASK
     }
 
     @Override
     protected void onPause() {
         mSharedPreferences.unregisterOnSharedPreferenceChangeListener(this);
         super.onPause();
+        // TODO KILL ASYNCTASK
     }
 
 
@@ -121,12 +130,7 @@ public class MainActivity extends AppCompatActivity implements SharedPreferences
     public void onClick(View v) {
         if (v.getId() == R.id.btn_join) {
 
-            // TODO maybe nicer UI, some kind of rotating busy sign?
-            // TODO set it on OK of edittext instead of this ugly piece...
-
             mUsername = mEditTextUsername.getText().toString();
-
-            // TODO regex match the name
             if (!(mUsername.equals("") || mUsername.contains("\n") || mUsername.contains("\t"))) {
                 mButtonJoin.setText(getString(R.string.trying_connect));
                 disableUI();
@@ -147,11 +151,13 @@ public class MainActivity extends AppCompatActivity implements SharedPreferences
     }
 
     public void disableUI(){
+        mLayoutProgressBar.setVisibility(View.VISIBLE);
         mButtonJoin.setEnabled(false);
         mEditTextUsername.setEnabled(false);
     }
 
     public void enableUI(){
+        mLayoutProgressBar.setVisibility(View.GONE);
         mButtonJoin.setEnabled(true);
         mEditTextUsername.setEnabled(true);
     }
@@ -238,7 +244,7 @@ public class MainActivity extends AppCompatActivity implements SharedPreferences
                     socket.receive(packetIn);
                 } catch (IOException e) {
                     if (e instanceof SocketTimeoutException) {
-                        Log.d(TAG, "Socket TIMEOUT");
+                        Log.e(TAG, "Socket timed out trying to receive");
                         gotTimeout = true;
                     } else {
                         Log.e(TAG, "Couldn't receive", e);
@@ -257,7 +263,7 @@ public class MainActivity extends AppCompatActivity implements SharedPreferences
                     case MessageTypes.ACK_MESSAGE:
                         return new ConnectionResult(true, ConnectionResult.NO_ERROR);
                     case MessageTypes.ERROR_MESSAGE:
-                        return new ConnectionResult(false, Integer.parseInt(msgIn.getMessage()));
+                        return new ConnectionResult(false, Integer.parseInt(msgIn.getContent()));
                     default:
                         Log.e(TAG, "Switch default case. We shouldn't be here. Think harder!");
                         return new ConnectionResult(false, ConnectionResult.NO_ERROR);
@@ -297,7 +303,7 @@ public class MainActivity extends AppCompatActivity implements SharedPreferences
         @Override
         public void onProgressUpdate(Integer... values) {
 
-            // TODO maybe nicer UI, some kind of rotating busy sign?
+            // TODO fix the numbers
             switch (values[0].intValue()) {
                 case 1:
                     mButtonJoin.setText(getString(R.string.attempt_two));
