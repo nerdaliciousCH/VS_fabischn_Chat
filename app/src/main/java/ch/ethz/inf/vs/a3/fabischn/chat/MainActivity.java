@@ -123,13 +123,15 @@ public class MainActivity extends AppCompatActivity implements SharedPreferences
 
             // TODO maybe nicer UI, some kind of rotating busy sign?
             // TODO set it on OK of edittext instead of this ugly piece...
+
             mUsername = mEditTextUsername.getText().toString();
 
             // TODO regex match the name
             if (!(mUsername.equals("") || mUsername.contains("\n") || mUsername.contains("\t"))) {
                 mButtonJoin.setText(getString(R.string.trying_connect));
                 disableUI();
-
+                // TODO set wakelock?
+                // https://developer.android.com/training/scheduling/wakelock.html
                 mClientUUID = UUID.randomUUID().toString();
                 ServerConnectionTask connectToServer = new ServerConnectionTask(this);
                 connectToServer.execute(new ConnectionParameters(mServerIP, mServerPORT, mClientUUID, mUsername));
@@ -276,6 +278,8 @@ public class MainActivity extends AppCompatActivity implements SharedPreferences
                 intent.putExtra("uuid", mClientUUID);
                 startActivity(intent);
             } else {
+                // TODO unset wakelock
+                // https://developer.android.com/training/scheduling/wakelock.html
                 int errorCode = result.getErrorCode();
                 String errorMessage = "";
                 if (errorCode >= 0 && errorCode < 5){
@@ -296,16 +300,16 @@ public class MainActivity extends AppCompatActivity implements SharedPreferences
             // TODO maybe nicer UI, some kind of rotating busy sign?
             switch (values[0].intValue()) {
                 case 1:
-                    mButtonJoin.setText(getString(R.string.reconnect_one));
+                    mButtonJoin.setText(getString(R.string.attempt_two));
                     break;
                 case 2:
-                    mButtonJoin.setText(getString(R.string.reconnect_two));
+                    mButtonJoin.setText(getString(R.string.attempt_three));
                     break;
                 case 3:
-                    mButtonJoin.setText(getString(R.string.reconnect_three));
+                    mButtonJoin.setText(getString(R.string.attempt_four));
                     break;
                 case 4:
-                    mButtonJoin.setText(getString(R.string.reconnect_four));
+                    mButtonJoin.setText(getString(R.string.attempt_five));
                     break;
                 default:
                     break;

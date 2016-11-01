@@ -83,11 +83,8 @@ public class ChatActivity extends AppCompatActivity implements Button.OnClickLis
         mButtonChatlog = (Button) findViewById(R.id.btn_chatlog);
 
 
-
         mTextUsername.setText(mUsername);
         mTextServer.setText(mServerIP + ":" + mServerPORT);
-
-        Log.d(TAG, "IP: " + mServerIP + "\n" + "Port: " + mServerPORT + "\n" + "username: " + mUsername + "\n" + "UUID: " + mClientUUID + "\n");
 
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
     }
@@ -95,16 +92,34 @@ public class ChatActivity extends AppCompatActivity implements Button.OnClickLis
     @Override
     public void onClick(View v) {
         if (v.getId() == R.id.btn_chatlog) {
-            mButtonChatlog.setText("Fetching chat log ...");
+            mButtonChatlog.setText(getString(R.string.fetching_chat_log));
             mButtonChatlog.setEnabled(false);
             FetchChatlogTask fetchChatlogTask = new FetchChatlogTask();
             fetchChatlogTask.execute(new ConnectionParameters(mServerIP, mServerPORT, mClientUUID, mUsername));
         }
     }
 
+
     // The android back button on the bottom
     @Override
     public void onBackPressed() {
+        deregister();
+        // onPostExecute will call super.onBackPressed();
+    }
+
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        // from https://www.tutorialspoint.com/android/android_navigation.htm
+        switch (item.getItemId()) {
+            case android.R.id.home:
+                deregister();
+                return true;
+        }
+        return false;
+    }
+
+    private void deregister() {
         // from http://stackoverflow.com/questions/6413700/android-proper-way-to-use-onbackpressed
         new AlertDialog.Builder(this)
                 .setTitle("Really Exit?")
@@ -113,39 +128,12 @@ public class ChatActivity extends AppCompatActivity implements Button.OnClickLis
                 .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
 
                     public void onClick(DialogInterface arg0, int arg1) {
-                        DeregisterFromServerTask deregisterTask = new DeregisterFromServerTask(ChatActivity.this, BackActions.SYSTEM_BACK);
+                        DeregisterFromServerTask deregisterTask = new DeregisterFromServerTask(ChatActivity.this, BackActions.NAV_UP);
                         deregisterTask.execute(new ConnectionParameters(mServerIP, mServerPORT, mClientUUID, mUsername));
                     }
                 }).create().show();
     }
 
-
-
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-
-        // from https://www.tutorialspoint.com/android/android_navigation.htm
-        switch (item.getItemId()) {
-            case android.R.id.home:
-                new AlertDialog.Builder(this)
-                        .setTitle("Really Exit?")
-                        .setMessage("Are you sure you want to exit?")
-                        .setNegativeButton(android.R.string.no, null)
-                        .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
-
-                            public void onClick(DialogInterface arg0, int arg1) {
-                                DeregisterFromServerTask deregisterTask = new DeregisterFromServerTask(ChatActivity.this, BackActions.NAV_UP);
-                                deregisterTask.execute(new ConnectionParameters(mServerIP, mServerPORT, mClientUUID, mUsername));
-                            }
-                        }).create().show();
-
-                return true;
-        }
-        return false;
-    }
-
-    // TODO ArrayList<MessageIn> -> PriorityQueue<MessageIn>
     private class FetchChatlogTask extends AsyncTask<ConnectionParameters, Integer, PriorityQueue<Message>> {
 
         private DatagramSocket socket = null;
@@ -184,25 +172,18 @@ public class ChatActivity extends AppCompatActivity implements Button.OnClickLis
                 Log.e(TAG, "Couldn't send", e);
                 return null;
             }
-            Log.d(TAG, "Successfully send UDP packet");
 
             PriorityQueue<Message> messages = new PriorityQueue<Message>(new MessageComparator());
 
-            byte[] bufIn = null;
-            DatagramPacket packetIn = null;
-
-            int count = 0;
+            byte[] bufIn;
+            DatagramPacket packetIn;
 
             while (true) {
                 bufIn = new byte[NetworkConsts.PAYLOAD_SIZE];
                 packetIn = new DatagramPacket(bufIn, bufIn.length);
                 try {
                     socket.receive(packetIn);
-                    Log.d(TAG, "Successfully received UDP packet");
-                    MessageIn msg = new MessageIn(packetIn);
-                    Log.d(TAG, "Got Message:" + msg.getMessage());
-                    messages.add(msg);
-                    publishProgress(new Integer(count++));
+                    messages.add(new MessageIn(packetIn));
                 } catch (IOException e) {
                     if (e instanceof SocketTimeoutException) {
                         Log.e(TAG, "Socket timed out trying to receive", e);
@@ -220,38 +201,31 @@ public class ChatActivity extends AppCompatActivity implements Button.OnClickLis
             StringBuilder builder = new StringBuilder();
 
             if (messageIns != null && !messageIns.isEmpty()) {
-                while(!messageIns.isEmpty()){
+                while (!messageIns.isEmpty()) {
                     MessageIn msg = (MessageIn) messageIns.poll();
-                    Log.d(TAG, "Message: " + msg.getContent());
-                    builder.append(msg.getContent()+"\n");
+                    builder.append(msg.getContent() + "\n");
                 }
-                builder.deleteCharAt(builder.length()-1);
+                builder.deleteCharAt(builder.length() - 1);
                 mTextChatlog.setText(builder.toString());
             }
             // TODO check scrollable view
 
-
+            // Reset UI
             mTextChatlog.setText(builder.toString());
             mButtonChatlog.setText(getString(R.string.get_chat_log));
             mButtonChatlog.setEnabled(true);
         }
 
-        @Override
-        protected void onProgressUpdate(Integer... values) {
-            // maybe runonuithread?
-//            mButtonChatlog.setText(values[0]);
-        }
     }
 
     private class DeregisterFromServerTask extends AsyncTask<ConnectionParameters, Void, ConnectionResult> {
-
 
 
         private Context context;
         private DatagramSocket socket;
         private BackActions source;
 
-        public DeregisterFromServerTask(Context context, BackActions source){
+        public DeregisterFromServerTask(Context context, BackActions source) {
             this.context = context;
             this.source = source;
         }
@@ -324,8 +298,8 @@ public class ChatActivity extends AppCompatActivity implements Button.OnClickLis
 
         @Override
         protected void onPostExecute(ConnectionResult connectionResult) {
-            if(connectionResult.getRegisterStatus()){
-                switch (source){
+            if (connectionResult.getRegisterStatus()) {
+                switch (source) {
                     case NAV_UP:
                         // TODO main will be created and resumed
                         NavUtils.navigateUpFromSameTask((Activity) context);
@@ -341,7 +315,7 @@ public class ChatActivity extends AppCompatActivity implements Button.OnClickLis
         }
     }
 
-    public enum BackActions{
+    public enum BackActions {
         NAV_UP, SYSTEM_BACK
     }
 

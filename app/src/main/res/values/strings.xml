@@ -8,10 +8,11 @@
     <string name="trying_connect">Trying to connect ...</string>
     <string name="connected">Connected!</string>
     <string name="get_chat_log">Get chat log</string>
-    <string name="reconnect_one">Tried to connect once</string>
-    <string name="reconnect_two">Tried to connect two times</string>
-    <string name="reconnect_three">Tried to connect three times</string>
-    <string name="reconnect_four">Tried to connect four times</string>
+    <string name="fetching_chat_log">Fetching chat log ...</string>
+    <string name="attempt_two">Connection attempts: 2</string>
+    <string name="attempt_three">Connection attempts: 3</string>
+    <string name="attempt_four">Connection attempts: 4</string>
+    <string name="attempt_five">Connection attempts: 5</string>
 
 
     <!-- keys for preferences -->

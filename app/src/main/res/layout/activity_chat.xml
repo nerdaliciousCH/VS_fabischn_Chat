@@ -28,7 +28,7 @@
         <TextView android:id="@+id/text_chatlog"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:maxLines="20"
+            android:maxLines="3"
             android:scrollbars="vertical"/>
     </ScrollView>
 </LinearLayout>
