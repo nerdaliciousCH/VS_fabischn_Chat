@@ -3,10 +3,6 @@ package ch.ethz.inf.vs.a3.fabischn.clock;
 import org.junit.Assert;
 import org.junit.Test;
 
-import ch.ethz.inf.vs.a3.fabischn.clock.LamportClock;
-
-//import ch.ethz.inf.vs.a3.solution.clock.LamportClock;
-
 public class LamportClockTests {
 	private final int testTime = 5;
 
@@ -88,7 +84,7 @@ public class LamportClockTests {
 	@Test
 	public void convertToStringValidClock() {
 		LamportClock refClock = new LamportClock();
-		refClock.setTime(testTime);
+		refClock.setTime(testTime);		
 		Assert.assertEquals(refClock.toString(), new Integer(testTime).toString());
 	}
 	

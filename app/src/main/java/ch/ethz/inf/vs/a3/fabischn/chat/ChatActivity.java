@@ -1,5 +1,7 @@
 package ch.ethz.inf.vs.a3.fabischn.chat;
 
+import android.app.Activity;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -14,6 +16,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import java.io.IOException;
 import java.net.DatagramPacket;
@@ -24,13 +27,15 @@ import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 
+import ch.ethz.inf.vs.a3.fabischn.message.ErrorCodes;
 import ch.ethz.inf.vs.a3.fabischn.message.MessageIn;
 import ch.ethz.inf.vs.a3.fabischn.message.MessageOut;
 import ch.ethz.inf.vs.a3.fabischn.message.MessageTypes;
 import ch.ethz.inf.vs.a3.fabischn.udpclient.ConnectionParameters;
+import ch.ethz.inf.vs.a3.fabischn.udpclient.ConnectionResult;
 import ch.ethz.inf.vs.a3.fabischn.udpclient.NetworkConsts;
 
-public class ChatActivity extends AppCompatActivity implements Button.OnClickListener{
+public class ChatActivity extends AppCompatActivity implements Button.OnClickListener {
 
     private static final String TAG = ChatActivity.class.getSimpleName();
 
@@ -72,7 +77,9 @@ public class ChatActivity extends AppCompatActivity implements Button.OnClickLis
         mTextServer = (TextView) findViewById(R.id.text_server);
         mTextChatlog = (TextView) findViewById(R.id.text_chatlog);
         mButtonChatlog = (Button) findViewById(R.id.btn_chatlog);
-        // FIXME maybe onResume?
+
+
+
         mTextUsername.setText(mUsername);
         mTextServer.setText(mServerIP + ":" + mServerPORT);
 
@@ -83,7 +90,7 @@ public class ChatActivity extends AppCompatActivity implements Button.OnClickLis
 
     @Override
     public void onClick(View v) {
-        if (v.getId() == R.id.btn_chatlog){
+        if (v.getId() == R.id.btn_chatlog) {
             mButtonChatlog.setText("Fetching chat log ...");
             mButtonChatlog.setEnabled(false);
             FetchChatlogTask fetchChatlogTask = new FetchChatlogTask();
@@ -102,43 +109,45 @@ public class ChatActivity extends AppCompatActivity implements Button.OnClickLis
                 .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
 
                     public void onClick(DialogInterface arg0, int arg1) {
-                        // TODO deregister from server
-                        ChatActivity.super.onBackPressed();
+                        DeregisterFromServerTask deregisterTask = new DeregisterFromServerTask(ChatActivity.this, BackActions.SYSTEM_BACK);
+                        deregisterTask.execute(new ConnectionParameters(mServerIP, mServerPORT, mClientUUID, mUsername));
                     }
                 }).create().show();
     }
 
-    // from https://www.tutorialspoint.com/android/android_navigation.htm
+
 
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
+
+        // from https://www.tutorialspoint.com/android/android_navigation.htm
         switch (item.getItemId()) {
             case android.R.id.home:
-//                new AlertDialog.Builder(this)
-//                        .setTitle("Really Exit?")
-//                        .setMessage("Are you sure you want to exit?")
-//                        .setNegativeButton(android.R.string.no, null)
-//                        .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
-//
-//                            public void onClick(DialogInterface arg0, int arg1) {
-//                                // TODO deregister from server
-//                                ChatActivity.super.onBackPressed();
-//                            }
-//                        }).create().show();
-                // TODO deregister from server
-                NavUtils.navigateUpFromSameTask(this);
+                new AlertDialog.Builder(this)
+                        .setTitle("Really Exit?")
+                        .setMessage("Are you sure you want to exit?")
+                        .setNegativeButton(android.R.string.no, null)
+                        .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
+
+                            public void onClick(DialogInterface arg0, int arg1) {
+                                DeregisterFromServerTask deregisterTask = new DeregisterFromServerTask(ChatActivity.this, BackActions.NAV_UP);
+                                deregisterTask.execute(new ConnectionParameters(mServerIP, mServerPORT, mClientUUID, mUsername));
+                            }
+                        }).create().show();
+
                 return true;
         }
         return false;
     }
 
+    // TODO ArrayList<MessageIn> -> PriorityQueue<MessageIn>
     private class FetchChatlogTask extends AsyncTask<ConnectionParameters, Integer, ArrayList<MessageIn>> {
 
         private DatagramSocket socket = null;
 
         @Override
-        protected ArrayList<MessageIn> doInBackground(ConnectionParameters... params){
+        protected ArrayList<MessageIn> doInBackground(ConnectionParameters... params) {
 
             String serverIPString = params[0].getServerIP();
             int serverPort = params[0].getServerPORT();
@@ -156,14 +165,14 @@ public class ChatActivity extends AppCompatActivity implements Button.OnClickLis
                 socket = new DatagramSocket();
                 socket.setSoTimeout(NetworkConsts.SOCKET_TIMEOUT);
             } catch (SocketException e) {
-                Log.e(TAG, "Couldn't create UDP socket" ,e);
+                Log.e(TAG, "Couldn't create UDP socket", e);
                 return null;
             }
 
             // Exclusively send and receive to and from server
             socket.connect(serverIP, serverPort);
 
-            MessageOut msgOut = new MessageOut(MessageTypes.RETRIEVE_CHAT_LOG, username, clientUUID, null ,serverIP, serverPort);
+            MessageOut msgOut = new MessageOut(MessageTypes.RETRIEVE_CHAT_LOG, username, clientUUID, null, serverIP, serverPort);
             DatagramPacket packetOut = msgOut.getDatagramPacket();
             try {
                 socket.send(packetOut);
@@ -180,7 +189,7 @@ public class ChatActivity extends AppCompatActivity implements Button.OnClickLis
 
             int count = 0;
 
-            while(true) {
+            while (true) {
                 bufIn = new byte[NetworkConsts.PAYLOAD_SIZE];
                 packetIn = new DatagramPacket(bufIn, bufIn.length);
                 try {
@@ -206,21 +215,19 @@ public class ChatActivity extends AppCompatActivity implements Button.OnClickLis
         protected void onPostExecute(ArrayList<MessageIn> messageIns) {
             StringBuilder builder = new StringBuilder();
 
-            // TODO order messages, using priority queue and messagecomparator
-            if (messageIns != null && !messageIns.isEmpty()){
-                for (MessageIn msg : messageIns){
+            // TODO Oliver: Sort the messages using vector clocks and priority queue
+            if (messageIns != null && !messageIns.isEmpty()) {
+                for (MessageIn msg : messageIns) {
                     Log.d(TAG, "Message: " + msg.getMessage());
                     builder.append(msg.getMessage() + "\n");
                 }
             }
-            // TODO check scrollable
+            // TODO check scrollable view
 
 
             mTextChatlog.setText(builder.toString());
-            // TODO values/strings
-            mButtonChatlog.setText("got the log");
+            mButtonChatlog.setText(getString(R.string.get_chat_log));
             mButtonChatlog.setEnabled(true);
-
         }
 
         @Override
@@ -230,8 +237,107 @@ public class ChatActivity extends AppCompatActivity implements Button.OnClickLis
         }
     }
 
-//    private class DeregisterFromServerTask extends AsyncTask<ConnectionParameters, Void, Void>{
-//
-//    }
+    private class DeregisterFromServerTask extends AsyncTask<ConnectionParameters, Void, ConnectionResult> {
+
+
+
+        private Context context;
+        private DatagramSocket socket;
+        private BackActions source;
+
+        public DeregisterFromServerTask(Context context, BackActions source){
+            this.context = context;
+            this.source = source;
+        }
+
+        @Override
+        protected ConnectionResult doInBackground(ConnectionParameters... params) {
+            String serverIPString = params[0].getServerIP();
+            int serverPort = params[0].getServerPORT();
+            String username = params[0].getUsername();
+            String clientUUID = params[0].getClientUUID();
+
+            InetAddress serverIP = null;
+            try {
+                serverIP = InetAddress.getByName(serverIPString);
+            } catch (UnknownHostException e) {
+                Log.e(TAG, "Unknown Host, couldn't parse IP", e);
+                return new ConnectionResult(false, ConnectionResult.NO_ERROR);
+            }
+            try {
+                socket = new DatagramSocket();
+                socket.setSoTimeout(NetworkConsts.SOCKET_TIMEOUT);
+            } catch (SocketException e) {
+                Log.e(TAG, "Couldn't create UDP socket", e);
+                return new ConnectionResult(false, ConnectionResult.NO_ERROR);
+            }
+
+            // Exclusively send and receive to and from server
+            socket.connect(serverIP, serverPort);
+
+
+            // create outgoing registration packet
+            // we can safely retransmit the same object multiple times
+            MessageOut msgOut = new MessageOut(MessageTypes.DEREGISTER, username, clientUUID, null, serverIP, serverPort);
+            DatagramPacket packetOut = msgOut.getDatagramPacket();
+
+            // variables for retries & packet buffer
+            byte[] bufIn;
+            DatagramPacket packetIn = null;
+
+            try {
+                socket.send(packetOut);
+            } catch (IOException e) {
+                Log.e(TAG, "Couldn't send", e);
+                return new ConnectionResult(false, ConnectionResult.NO_ERROR);
+            }
+
+            // create input buffer, after knowing send successful
+            bufIn = new byte[NetworkConsts.PAYLOAD_SIZE];
+            packetIn = new DatagramPacket(bufIn, bufIn.length);
+
+            try {
+                socket.receive(packetIn);
+            } catch (IOException e) {
+                if (e instanceof SocketTimeoutException) {
+                    Log.d(TAG, "Socket TIMEOUT");
+                } else {
+                    Log.e(TAG, "Couldn't receive", e);
+                    return new ConnectionResult(false, ConnectionResult.NO_ERROR);
+                }
+            }
+
+            MessageIn msgIn = new MessageIn(packetIn);
+            if (msgIn.getType().equals(MessageTypes.ACK_MESSAGE)) {
+                return new ConnectionResult(true, ConnectionResult.NO_ERROR);
+            } else {
+                Toast.makeText(ChatActivity.this, ErrorCodes.getStringError(Integer.parseInt(msgIn.getMessage())), Toast.LENGTH_LONG).show();
+                return new ConnectionResult(false, ConnectionResult.NO_ERROR);
+            }
+        }
+
+        @Override
+        protected void onPostExecute(ConnectionResult connectionResult) {
+            if(connectionResult.getRegisterStatus()){
+                switch (source){
+                    case NAV_UP:
+                        // TODO main will be created and resumed
+                        NavUtils.navigateUpFromSameTask((Activity) context);
+                        break;
+                    case SYSTEM_BACK:
+                        // TODO main will be resumed
+                        ChatActivity.super.onBackPressed();
+                        break;
+                    default:
+                        Log.e(TAG, "Switch case default. Shouldn't be here, think harder!");
+                }
+            }
+        }
+    }
+
+    public enum BackActions{
+        NAV_UP, SYSTEM_BACK
+    }
+
 
 }

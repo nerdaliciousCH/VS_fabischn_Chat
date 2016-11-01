@@ -29,6 +29,7 @@ import ch.ethz.inf.vs.a3.fabischn.message.MessageIn;
 import ch.ethz.inf.vs.a3.fabischn.message.MessageOut;
 import ch.ethz.inf.vs.a3.fabischn.message.MessageTypes;
 import ch.ethz.inf.vs.a3.fabischn.udpclient.ConnectionParameters;
+import ch.ethz.inf.vs.a3.fabischn.udpclient.ConnectionResult;
 import ch.ethz.inf.vs.a3.fabischn.udpclient.NetworkConsts;
 
 public class MainActivity extends AppCompatActivity implements SharedPreferences.OnSharedPreferenceChangeListener, Button.OnClickListener {
@@ -73,11 +74,10 @@ public class MainActivity extends AppCompatActivity implements SharedPreferences
         super.onResume();
         Log.d(TAG, "onResume");
         mSharedPreferences.registerOnSharedPreferenceChangeListener(this);
-
-        // TODO maybe we are connecting? Button might show something else...
         mServerIP = getSettingsIP();
         mServerPORT = getSettingsPORT();
         updateJoinButtonServerAddress();
+        enableUI();
     }
 
     @Override
@@ -149,10 +149,6 @@ public class MainActivity extends AppCompatActivity implements SharedPreferences
         mEditTextUsername.setEnabled(false);
     }
 
-    public void resetUI(){
-        mButtonJoin.setText(getString(R.string.join_chat));
-    }
-
     public void enableUI(){
         mButtonJoin.setEnabled(true);
         mEditTextUsername.setEnabled(true);
@@ -160,12 +156,10 @@ public class MainActivity extends AppCompatActivity implements SharedPreferences
 
 
     public String getSettingsIP(){
-        // TODO sanity checks
         return mSharedPreferences.getString(KEY_SETTING_IP, "no ip");
     }
 
     public int getSettingsPORT(){
-        // TODO sanity checks
         return Integer.parseInt(mSharedPreferences.getString(KEY_SETTING_PORT, "0"));
     }
 
@@ -234,7 +228,6 @@ public class MainActivity extends AppCompatActivity implements SharedPreferences
                 // Let UI thread know, that we are still trying to connect
                 publishProgress(tries);
 
-                // TODO can we recycle it?
                 // create input buffer, after knowing send successful
                 bufIn = new byte[NetworkConsts.PAYLOAD_SIZE];
                 packetIn = new DatagramPacket(bufIn, bufIn.length);
@@ -292,7 +285,7 @@ public class MainActivity extends AppCompatActivity implements SharedPreferences
                     errorMessage = "Communication failed";
                 }
                 Toast.makeText(context, "Couldn't join the chat: " + errorMessage, Toast.LENGTH_LONG).show();
-                resetUI();
+                updateJoinButtonServerAddress();
                 enableUI();
             }
         }
@@ -304,45 +297,20 @@ public class MainActivity extends AppCompatActivity implements SharedPreferences
             switch (values[0].intValue()) {
                 case 1:
                     mButtonJoin.setText(getString(R.string.reconnect_one));
-                    Log.d(TAG, "reconnect 1");
                     break;
                 case 2:
                     mButtonJoin.setText(getString(R.string.reconnect_two));
-                    Log.d(TAG, "reconnect 2");
                     break;
                 case 3:
                     mButtonJoin.setText(getString(R.string.reconnect_three));
-                    Log.d(TAG, "reconnect 3");
                     break;
                 case 4:
                     mButtonJoin.setText(getString(R.string.reconnect_four));
-                    Log.d(TAG, "reconnect 4");
                     break;
                 default:
-                    Log.d(TAG, ">4 tries currently");
                     break;
             }
         }
-    }
-
-    private class ConnectionResult {
-        private static final int NO_ERROR = -1;
-        private final boolean mRegistered;
-        private final int mErrorCode;
-
-        private ConnectionResult(final boolean registered, final int errorCode){
-            mRegistered = registered;
-            mErrorCode = errorCode;
-        }
-
-        public boolean getRegisterStatus(){
-            return mRegistered;
-        }
-
-        public int getErrorCode(){
-            return mErrorCode;
-        }
-
     }
 
 }

@@ -23,7 +23,8 @@ public class MessageIn extends Message {
         super();
         mBuffer = packet.getData().clone();
         if (mBuffer.length > NetworkConsts.PAYLOAD_SIZE){
-            //TODO throw exception?
+            // Should actually prevent this and throw exception
+            Log.e(TAG,"Payload will be trimmed, got more bytes than expected");
         }
         mBuffer = trim(mBuffer.clone());
 
