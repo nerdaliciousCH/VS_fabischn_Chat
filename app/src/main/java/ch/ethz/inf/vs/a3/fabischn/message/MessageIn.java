@@ -52,8 +52,11 @@ public class MessageIn extends Message {
         }
         try {
             JSONObject jsonBody = mJSON.getJSONObject(JsonFields.BODY);
-            if (getType().equals(MessageTypes.ERROR_MESSAGE)) {
-                setMessage(jsonBody.getString(JsonFields.BODY_CONTENT));
+            switch (getType()) {
+            case MessageTypes.CHAT_MESSAGE:
+            case MessageTypes.ERROR_MESSAGE:
+                setContent(jsonBody.getString(JsonFields.BODY_CONTENT));
+                break;
             }
         } catch (JSONException e) {
             Log.e(TAG, "Couldn't parse the JSON body", e);

@@ -26,11 +26,15 @@ import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.Comparator;
 
 import ch.ethz.inf.vs.a3.fabischn.message.ErrorCodes;
+import ch.ethz.inf.vs.a3.fabischn.message.Message;
+import ch.ethz.inf.vs.a3.fabischn.message.MessageComparator;
 import ch.ethz.inf.vs.a3.fabischn.message.MessageIn;
 import ch.ethz.inf.vs.a3.fabischn.message.MessageOut;
 import ch.ethz.inf.vs.a3.fabischn.message.MessageTypes;
+import ch.ethz.inf.vs.a3.fabischn.queue.PriorityQueue;
 import ch.ethz.inf.vs.a3.fabischn.udpclient.ConnectionParameters;
 import ch.ethz.inf.vs.a3.fabischn.udpclient.ConnectionResult;
 import ch.ethz.inf.vs.a3.fabischn.udpclient.NetworkConsts;
@@ -142,12 +146,12 @@ public class ChatActivity extends AppCompatActivity implements Button.OnClickLis
     }
 
     // TODO ArrayList<MessageIn> -> PriorityQueue<MessageIn>
-    private class FetchChatlogTask extends AsyncTask<ConnectionParameters, Integer, ArrayList<MessageIn>> {
+    private class FetchChatlogTask extends AsyncTask<ConnectionParameters, Integer, PriorityQueue<Message>> {
 
         private DatagramSocket socket = null;
 
         @Override
-        protected ArrayList<MessageIn> doInBackground(ConnectionParameters... params) {
+        protected PriorityQueue<Message> doInBackground(ConnectionParameters... params) {
 
             String serverIPString = params[0].getServerIP();
             int serverPort = params[0].getServerPORT();
@@ -182,7 +186,7 @@ public class ChatActivity extends AppCompatActivity implements Button.OnClickLis
             }
             Log.d(TAG, "Successfully send UDP packet");
 
-            ArrayList<MessageIn> messages = new ArrayList<>();
+            PriorityQueue<Message> messages = new PriorityQueue<Message>(new MessageComparator());
 
             byte[] bufIn = null;
             DatagramPacket packetIn = null;
@@ -212,15 +216,17 @@ public class ChatActivity extends AppCompatActivity implements Button.OnClickLis
         }
 
         @Override
-        protected void onPostExecute(ArrayList<MessageIn> messageIns) {
+        protected void onPostExecute(PriorityQueue<Message> messageIns) {
             StringBuilder builder = new StringBuilder();
 
-            // TODO Oliver: Sort the messages using vector clocks and priority queue
             if (messageIns != null && !messageIns.isEmpty()) {
-                for (MessageIn msg : messageIns) {
-                    Log.d(TAG, "Message: " + msg.getMessage());
-                    builder.append(msg.getMessage() + "\n");
+                while(!messageIns.isEmpty()){
+                    MessageIn msg = (MessageIn) messageIns.poll();
+                    Log.d(TAG, "Message: " + msg.getContent());
+                    builder.append(msg.getContent()+"\n");
                 }
+                builder.deleteCharAt(builder.length()-1);
+                mTextChatlog.setText(builder.toString());
             }
             // TODO check scrollable view
 

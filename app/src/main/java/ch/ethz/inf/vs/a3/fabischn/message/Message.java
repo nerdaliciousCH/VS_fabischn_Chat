@@ -12,20 +12,20 @@ public abstract class Message {
     private String mUUID;
     private String mTimestamp;
     private String mType;
+    private String mContent;
 
     private String mMessage;
 
     protected byte[] mBuffer;
     protected JSONObject mJSON;
 
-    public Message(){
+    public Message() {
         mUsername = "";
         mUUID = "";
         mTimestamp = "{}";
         mType = "";
+        mContent = "";
     }
-
-
 
 
     @Override
@@ -73,11 +73,19 @@ public abstract class Message {
         this.mType = mMessageType;
     }
 
-    public String getMessage(){
+    public String getContent() {
+        return mContent;
+    }
+
+    protected void setContent(String mContent) {
+        this.mContent = mContent;
+    }
+
+    public String getMessage() {
         return mMessage;
     }
 
-    protected void setMessage(String mMessage){
+    protected void setMessage(String mMessage) {
         this.mMessage = mMessage;
     }
 }

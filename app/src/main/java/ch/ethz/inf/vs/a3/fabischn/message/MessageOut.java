@@ -26,7 +26,7 @@ public class MessageOut extends Message {
         super();
         setUsername(username);
         setUUID(uuid);
-//        super.setTimestamp();
+//        super.setTimestamp(); // VectorClock
         setType(msgType);
         mServerIP = serverIP;
         mServerPORT = serverPORT;
