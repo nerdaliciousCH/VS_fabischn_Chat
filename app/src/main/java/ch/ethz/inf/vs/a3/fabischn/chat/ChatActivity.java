@@ -6,9 +6,11 @@ import android.content.SharedPreferences;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
+import android.support.v4.app.NavUtils;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
@@ -52,32 +54,31 @@ public class ChatActivity extends AppCompatActivity implements Button.OnClickLis
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        Log.d(TAG, "onCreate");
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_chat);
-        Intent intent = getIntent();
 
+        Intent intent = getIntent();
         mClientUUID = intent.getStringExtra("uuid");
         mUsername = intent.getStringExtra("username");
 
         KEY_SETTING_IP = getString(R.string.setting_ip);
         KEY_SETTING_PORT = getString(R.string.setting_port);
-
         mSharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
-
         mServerIP = mSharedPreferences.getString(KEY_SETTING_IP, "no ip");
         mServerPORT = Integer.parseInt(mSharedPreferences.getString(KEY_SETTING_PORT, "no port"));
 
         mTextUsername = (TextView) findViewById(R.id.text_username);
         mTextServer = (TextView) findViewById(R.id.text_server);
         mTextChatlog = (TextView) findViewById(R.id.text_chatlog);
-
         mButtonChatlog = (Button) findViewById(R.id.btn_chatlog);
-
         // FIXME maybe onResume?
         mTextUsername.setText(mUsername);
         mTextServer.setText(mServerIP + ":" + mServerPORT);
 
         Log.d(TAG, "IP: " + mServerIP + "\n" + "Port: " + mServerPORT + "\n" + "username: " + mUsername + "\n" + "UUID: " + mClientUUID + "\n");
+
+        getSupportActionBar().setDisplayHomeAsUpEnabled(true);
     }
 
     @Override
@@ -90,9 +91,9 @@ public class ChatActivity extends AppCompatActivity implements Button.OnClickLis
         }
     }
 
+    // The android back button on the bottom
     @Override
     public void onBackPressed() {
-        Log.d(TAG, "onBackPressed");
         // from http://stackoverflow.com/questions/6413700/android-proper-way-to-use-onbackpressed
         new AlertDialog.Builder(this)
                 .setTitle("Really Exit?")
@@ -101,9 +102,35 @@ public class ChatActivity extends AppCompatActivity implements Button.OnClickLis
                 .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
 
                     public void onClick(DialogInterface arg0, int arg1) {
+                        // TODO deregister from server
                         ChatActivity.super.onBackPressed();
                     }
                 }).create().show();
+    }
+
+    // from https://www.tutorialspoint.com/android/android_navigation.htm
+
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()) {
+            case android.R.id.home:
+//                new AlertDialog.Builder(this)
+//                        .setTitle("Really Exit?")
+//                        .setMessage("Are you sure you want to exit?")
+//                        .setNegativeButton(android.R.string.no, null)
+//                        .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
+//
+//                            public void onClick(DialogInterface arg0, int arg1) {
+//                                // TODO deregister from server
+//                                ChatActivity.super.onBackPressed();
+//                            }
+//                        }).create().show();
+                // TODO deregister from server
+                NavUtils.navigateUpFromSameTask(this);
+                return true;
+        }
+        return false;
     }
 
     private class FetchChatlogTask extends AsyncTask<ConnectionParameters, Integer, ArrayList<MessageIn>> {
@@ -202,5 +229,9 @@ public class ChatActivity extends AppCompatActivity implements Button.OnClickLis
 //            mButtonChatlog.setText(values[0]);
         }
     }
+
+//    private class DeregisterFromServerTask extends AsyncTask<ConnectionParameters, Void, Void>{
+//
+//    }
 
 }

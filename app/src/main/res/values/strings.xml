@@ -7,6 +7,7 @@
     <string name="label_setting_port">Chat server\'s UDP Port</string>
     <string name="trying_connect">Trying to connect ...</string>
     <string name="connected">Connected!</string>
+    <string name="get_chat_log">Get chat log</string>
     <string name="reconnect_one">Tried to connect once</string>
     <string name="reconnect_two">Tried to connect two times</string>
     <string name="reconnect_three">Tried to connect three times</string>

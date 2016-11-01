@@ -55,6 +55,7 @@ public class MainActivity extends AppCompatActivity implements SharedPreferences
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        Log.d(TAG, "onCreate");
         setContentView(R.layout.activity_main);
 
         KEY_SETTING_IP = getString(R.string.setting_ip);
