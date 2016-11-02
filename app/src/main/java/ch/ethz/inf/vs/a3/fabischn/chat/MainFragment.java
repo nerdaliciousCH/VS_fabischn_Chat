@@ -1,9 +1,10 @@
 package ch.ethz.inf.vs.a3.fabischn.chat;
 
-import android.app.Fragment;
+import android.app.Activity;
 import android.content.Context;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.support.v4.app.Fragment;
 import android.util.Log;
 
 import java.io.IOException;
@@ -57,9 +58,8 @@ public class MainFragment extends Fragment {
         // Calling this with Activity as parameter is deprecated
         // http://stackoverflow.com/questions/32083053/android-fragment-onattach-deprecated
         super.onAttach(context);
-        if (context instanceof TaskCallbacks) {
-            mCallbacks = (TaskCallbacks) context;
-        }
+        mCallbacks = (TaskCallbacks) context;
+
     }
 
     /**
@@ -86,7 +86,6 @@ public class MainFragment extends Fragment {
     }
 
     public void cancelRegisterTask() {
-        // TODO socket.close?
         mRegisterTask.cancel(true);
     }
 
@@ -196,28 +195,32 @@ public class MainFragment extends Fragment {
                         return new ConnectionResult(false, ErrorCodes.UNKNOWN_ERROR);
                     }
                 }
+                Log.d(TAG, "we made it throug...");
 
                 if (!retry) {
+                    Log.d(TAG, "!retry");
                     // if we are here, we had no exception and really received a valid UDP packet
                     break;
                 } else {
+                    Log.d(TAG, "retry");
                     if (attempt > 5) {
+                        Log.d(TAG, "attempt > 5");
                         return new ConnectionResult(false, lastError);
                     }
                 }
             }
 
             if (attempt <= 5) {
-            MessageIn msgIn = new MessageIn(packetIn);
-            switch (msgIn.getType()) {
-                case MessageTypes.ACK_MESSAGE:
-                    return new ConnectionResult(true, ErrorCodes.NO_ERROR);
-                case MessageTypes.ERROR_MESSAGE:
-                    return new ConnectionResult(false, Integer.parseInt(msgIn.getContent()));
-                default:
-                    Log.e(TAG, "Switch default case. We shouldn't be here. Think harder!");
-                    return new ConnectionResult(false, ErrorCodes.NO_ERROR);
-            }
+                MessageIn msgIn = new MessageIn(packetIn);
+                switch (msgIn.getType()) {
+                    case MessageTypes.ACK_MESSAGE:
+                        return new ConnectionResult(true, ErrorCodes.NO_ERROR);
+                    case MessageTypes.ERROR_MESSAGE:
+                        return new ConnectionResult(false, Integer.parseInt(msgIn.getContent()));
+                    default:
+                        Log.e(TAG, "Switch default case. We shouldn't be here. Think harder!");
+                        return new ConnectionResult(false, ErrorCodes.NO_ERROR);
+                }
             } else {
                 Log.e(TAG, "Server did not respond. Got 5 timeouts");
                 return new ConnectionResult(false, ErrorCodes.NO_ERROR);
@@ -244,7 +247,9 @@ public class MainFragment extends Fragment {
 
         @Override
         protected void onCancelled() {
-
+            if (socket != null) {
+                socket.close();
+            }
             if (mCallbacks != null) {
                 mCallbacks.onCancelled();
             }

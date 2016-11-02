@@ -132,14 +132,14 @@ public class ChatActivity extends AppCompatActivity implements Button.OnClickLis
         return false;
     }
 
-    public void disableUIforFetch(){
+    public void disableUIforFetch() {
         mTextChatlog.setText("");
         mLayoutProgressBar.setVisibility(View.VISIBLE);
         mButtonChatlog.setText(getString(R.string.fetching_chat_log));
         mButtonChatlog.setEnabled(false);
     }
 
-    public void readyUIforFetch(){
+    public void readyUIforFetch() {
         mLayoutProgressBar.setVisibility(View.GONE);
         mButtonChatlog.setText(getString(R.string.get_chat_log));
         mButtonChatlog.setEnabled(true);
@@ -196,7 +196,7 @@ public class ChatActivity extends AppCompatActivity implements Button.OnClickLis
                 socket.send(packetOut);
             } catch (IOException e) {
                 Log.e(TAG, "SEND FAILED!\n");
-                if (e instanceof PortUnreachableException){
+                if (e instanceof PortUnreachableException) {
                     Log.e(TAG, "DESTINATION UNREACHABLE", e);
                 } else {
                     Log.e(TAG, "Something weird happened on send", e);
@@ -219,11 +219,11 @@ public class ChatActivity extends AppCompatActivity implements Button.OnClickLis
                     if (e instanceof SocketTimeoutException) {
                         Log.e(TAG, "Socket timed out trying to receive");
                         return messages;
-                    } else if(e instanceof PortUnreachableException) {
+                    } else if (e instanceof PortUnreachableException) {
                         Log.e(TAG, "NO SERVER RUNNING AT DESTINATION", e);
-                    } else if(e instanceof IOException){
+                    } else if (e instanceof IOException) {
                         Log.e(TAG, "SOCKET EXPLODED", e);
-                    } else{
+                    } else {
                         Log.e(TAG, "Something weird happened on receive", e);
                     }
                     return null;
@@ -243,10 +243,10 @@ public class ChatActivity extends AppCompatActivity implements Button.OnClickLis
                 builder.deleteCharAt(builder.length() - 1);
                 mTextChatlog.setText(builder.toString());
                 readyUIforFetch();
-            } else if (messageIns == null){
+            } else if (messageIns == null) {
                 // maybe make queue and errorcode a pair
                 // TODO go back to mainactivity
-            } else{
+            } else {
                 mTextChatlog.setText("no messages on server");
                 readyUIforFetch();
             }
@@ -305,7 +305,7 @@ public class ChatActivity extends AppCompatActivity implements Button.OnClickLis
                 socket.send(packetOut);
             } catch (IOException e) {
                 Log.e(TAG, "SEND FAILED!\n");
-                if (e instanceof PortUnreachableException){
+                if (e instanceof PortUnreachableException) {
                     Log.e(TAG, "DESTINATION UNREACHABLE", e);
                     return new ConnectionResult(false, ErrorCodes.SOCKET_PORT_UNREACHABLE);
                 } else {
@@ -320,17 +320,17 @@ public class ChatActivity extends AppCompatActivity implements Button.OnClickLis
             try {
                 socket.receive(packetIn);
             } catch (IOException e) {
-                Log.e(TAG,"RECEIVE FAILED!\n");
+                Log.e(TAG, "RECEIVE FAILED!\n");
                 if (e instanceof SocketTimeoutException) {
                     Log.e(TAG, "SOCKET TIMEOUT");
                     return new ConnectionResult(false, ErrorCodes.SOCKET_TIMEOUT);
-                } else if(e instanceof PortUnreachableException) {
+                } else if (e instanceof PortUnreachableException) {
                     Log.e(TAG, "NO SERVER RUNNING AT DESTINATION", e);
                     return new ConnectionResult(false, ErrorCodes.SOCKET_PORT_UNREACHABLE);
-                } else if(e instanceof IOException){
+                } else if (e instanceof IOException) {
                     Log.e(TAG, "SOCKET EXPLODED", e);
                     return new ConnectionResult(false, ErrorCodes.SOCKET_IO_ERROR);
-                } else{
+                } else {
                     Log.e(TAG, "Something weird happened on receive", e);
                     return new ConnectionResult(false, ErrorCodes.UNKNOWN_ERROR);
                 }

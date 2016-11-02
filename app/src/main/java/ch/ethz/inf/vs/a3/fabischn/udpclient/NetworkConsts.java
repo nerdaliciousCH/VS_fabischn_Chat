@@ -9,7 +9,7 @@ public final class NetworkConsts {
 
     /**
      * Address of the chat server
-     *
+     * <p>
      * This address is for the emulator.
      */
     public static String SERVER_ADDRESS = "10.0.2.2";

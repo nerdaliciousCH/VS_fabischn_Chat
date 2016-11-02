@@ -4,9 +4,7 @@ import android.app.FragmentManager;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
-import android.os.PersistableBundle;
 import android.preference.PreferenceManager;
-import android.support.v4.app.Fragment;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.Menu;
@@ -23,7 +21,7 @@ import ch.ethz.inf.vs.a3.fabischn.message.ErrorCodes;
 import ch.ethz.inf.vs.a3.fabischn.udpclient.ConnectionParameters;
 import ch.ethz.inf.vs.a3.fabischn.udpclient.ConnectionResult;
 
-public class MainActivity extends AppCompatActivity implements SharedPreferences.OnSharedPreferenceChangeListener, Button.OnClickListener, MainFragment.TaskCallbacks{
+public class MainActivity extends AppCompatActivity implements SharedPreferences.OnSharedPreferenceChangeListener, Button.OnClickListener, MainFragment.TaskCallbacks {
 
 
     private static final String TAG = MainActivity.class.getSimpleName();
@@ -71,31 +69,22 @@ public class MainActivity extends AppCompatActivity implements SharedPreferences
         updateJoinButtonServerAddress();
         enableUI();
 
-        // TODO maybe onresume?
-        FragmentManager fragmentManager = getFragmentManager();
+        android.support.v4.app.FragmentManager fragmentManager = getSupportFragmentManager();
         mMainFragment = (MainFragment) fragmentManager.findFragmentByTag(TAG_MAINFRAGMENT);
 
         // TODO check wifi connection
+        // TODO where does usernametext go when we come back from settings activity?
     }
 
     @Override
     protected void onResume() {
-        // TODO test lifecycle
         super.onResume();
         Log.d(TAG, "onResume");
         mSharedPreferences.registerOnSharedPreferenceChangeListener(this);
-
     }
 
     @Override
     protected void onPause() {
-        // if orientation changes, we kill the async task.
-//        if (mConnectionTask != null){
-//            mConnectionTask.cancel(true);
-//            mConnectionTask.socket.close();
-//            mConnectionTask = null;
-//            Toast.makeText(this, "The connection was aborted. Please try again", Toast.LENGTH_LONG).show();
-//        }
         mSharedPreferences.unregisterOnSharedPreferenceChangeListener(this);
         super.onPause();
     }
@@ -106,7 +95,7 @@ public class MainActivity extends AppCompatActivity implements SharedPreferences
         outState.putString(getString(R.string.key_button_join_text), mButtonJoin.getText().toString());
         outState.putBoolean(getString(R.string.key_text_username_enabled), mEditTextUsername.isEnabled());
         boolean visible = false;
-        if (mLayoutProgressBar.getVisibility() == View.VISIBLE){
+        if (mLayoutProgressBar.getVisibility() == View.VISIBLE) {
             visible = true;
         }
         outState.putBoolean(getString(R.string.key_layout_progress_visibility), visible);
@@ -121,11 +110,8 @@ public class MainActivity extends AppCompatActivity implements SharedPreferences
         mButtonJoin.setEnabled(savedInstanceState.getBoolean(getString(R.string.key_button_join_enabled)));
         mButtonJoin.setText(savedInstanceState.getString(getString(R.string.key_button_join_text)));
         boolean visible = savedInstanceState.getBoolean(getString(R.string.key_layout_progress_visibility));
-        if (visible){
+        if (visible) {
             mLayoutProgressBar.setVisibility(View.VISIBLE);
-        } else{
-            // TODO remove
-//            mLayoutProgressBar.setVisibility(View.GONE);
         }
     }
 
@@ -166,12 +152,6 @@ public class MainActivity extends AppCompatActivity implements SharedPreferences
             mUsername = mEditTextUsername.getText().toString();
             if (!(mUsername.equals("") || mUsername.contains("\n") || mUsername.contains("\t") || mUsername.contains(" "))) {
 
-                // TODO set wakelock?
-                // https://developer.android.com/training/scheduling/wakelock.html
-
-//                mConnectionTask = new ServerConnectionTask(this);
-//                mConnectionTask.execute(new ConnectionParameters(mServerIP, mServerPORT, mClientUUID, mUsername));
-
                 mClientUUID = UUID.randomUUID().toString();
                 mButtonJoin.setText(getString(R.string.trying_connect));
                 disableUI();
@@ -180,7 +160,7 @@ public class MainActivity extends AppCompatActivity implements SharedPreferences
                 Bundle connParams = new Bundle();
                 connParams.putSerializable(getString(R.string.key_connection_parameters), new ConnectionParameters(mServerIP, mServerPORT, mClientUUID, mUsername));
                 mMainFragment.setArguments(connParams);
-                FragmentManager fragmentManager = getFragmentManager();
+                android.support.v4.app.FragmentManager fragmentManager = getSupportFragmentManager();
                 fragmentManager.beginTransaction().add(mMainFragment, TAG_MAINFRAGMENT).commit();
 
             } else {
@@ -194,22 +174,22 @@ public class MainActivity extends AppCompatActivity implements SharedPreferences
         mButtonJoin.setText("Join Chat @ " + mServerIP + ":" + mServerPORT);
     }
 
-    public void disableUI(){
+    public void disableUI() {
         mLayoutProgressBar.setVisibility(View.VISIBLE);
         mButtonJoin.setEnabled(false);
         mEditTextUsername.setEnabled(false);
     }
 
-    public void enableUI(){
+    public void enableUI() {
         mLayoutProgressBar.setVisibility(View.GONE);
         mButtonJoin.setEnabled(true);
         mEditTextUsername.setEnabled(true);
     }
 
-    public void removeFragment(){
+    public void removeFragment() {
 
-        FragmentManager fragmentManager = getFragmentManager();
-        if (mMainFragment == null){
+        android.support.v4.app.FragmentManager fragmentManager = getSupportFragmentManager();
+        if (mMainFragment == null) {
             mMainFragment = (MainFragment) fragmentManager.findFragmentByTag(TAG_MAINFRAGMENT);
         }
         if (mMainFragment != null) {
@@ -221,11 +201,11 @@ public class MainActivity extends AppCompatActivity implements SharedPreferences
     }
 
 
-    public String getSettingsIP(){
+    public String getSettingsIP() {
         return mSharedPreferences.getString(KEY_SETTING_IP, "no ip");
     }
 
-    public int getSettingsPORT(){
+    public int getSettingsPORT() {
         return Integer.parseInt(mSharedPreferences.getString(KEY_SETTING_PORT, "0"));
     }
 
@@ -261,7 +241,9 @@ public class MainActivity extends AppCompatActivity implements SharedPreferences
 
     @Override
     public void onPostExecute(ConnectionResult result) {
-        if (result.getRegisterStatus()){
+        Log.d(TAG, "onPostExecute");
+        if (result.getRegisterStatus()) {
+            Log.d(TAG, "success register");
             removeFragment();
             Toast.makeText(this, "Registration succesfull!", Toast.LENGTH_SHORT).show();
             Intent intent = new Intent(this, ChatActivity.class);
@@ -269,11 +251,9 @@ public class MainActivity extends AppCompatActivity implements SharedPreferences
             intent.putExtra("uuid", mClientUUID);
             startActivity(intent);
         } else {
-            // TODO unset wakelock
-            // https://developer.android.com/training/scheduling/wakelock.html
             int errorCode = result.getErrorCode();
             String errorMessage = "Unknown error";
-            if (errorCode >= 0 && errorCode < 7){
+            if (errorCode >= 0 && errorCode < 7) {
                 // the protocol error codes and my own errorcodes
                 errorMessage = ErrorCodes.getStringError(errorCode);
             }
