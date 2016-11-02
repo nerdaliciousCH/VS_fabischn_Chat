@@ -75,8 +75,8 @@ public class ChatActivity extends AppCompatActivity implements Button.OnClickLis
         mClientUUID = intent.getStringExtra("uuid");
         mUsername = intent.getStringExtra("username");
 
-        KEY_SETTING_IP = getString(R.string.setting_ip);
-        KEY_SETTING_PORT = getString(R.string.setting_port);
+        KEY_SETTING_IP = getString(R.string.key_setting_ip);
+        KEY_SETTING_PORT = getString(R.string.key_setting_port);
         mSharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
         mServerIP = mSharedPreferences.getString(KEY_SETTING_IP, "no ip");
         mServerPORT = Integer.parseInt(mSharedPreferences.getString(KEY_SETTING_PORT, "no port"));

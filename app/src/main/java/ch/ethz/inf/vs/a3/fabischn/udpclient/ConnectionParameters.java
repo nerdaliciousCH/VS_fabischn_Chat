@@ -1,9 +1,11 @@
 package ch.ethz.inf.vs.a3.fabischn.udpclient;
 
+import java.io.Serializable;
+
 /**
  * Created by fabian on 31.10.16.
  */
-public class ConnectionParameters {
+public class ConnectionParameters implements Serializable{
 
     private final String mServerIP;
     private final int mServerPORT;

@@ -19,6 +19,14 @@
 
 
     <!-- keys for preferences -->
-    <string name="setting_ip">setting_ip</string>
-    <string name="setting_port">setting_port</string>
+    <string name="key_setting_ip">setting_ip</string>
+    <string name="key_setting_port">setting_port</string>
+    <string name="key_connection_parameters">"connection_parameters</string>
+    <string name="key_button_join_text">key_button_join_text</string>
+    <string name="key_button_join_enabled">key_button_join_enabled</string>
+    <string name="key_layout_progress_visibility">key_layout_progress_visibility</string>
+    <string name="key_text_username_enabled">key_text_username_enabled</string>
+
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
 </resources>

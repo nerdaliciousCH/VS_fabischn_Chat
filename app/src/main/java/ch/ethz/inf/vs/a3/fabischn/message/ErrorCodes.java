@@ -24,8 +24,9 @@ public class ErrorCodes {
 
     public static final int INETADDRESS_UNKNOWN_HOST = 9;
 
-    public static final int UNKNOWN_ERROR = 10;
+    public static final int USER_CANCELLED = 10;
 
+    public static final int UNKNOWN_ERROR = 11;
 
 
     public static String getStringError(int errorCode) {
@@ -61,15 +62,22 @@ public class ErrorCodes {
                 break;
 
             case 6:
+                error = "The connection timed out";
+                break;
             case 7:
+            case 8:
                 error = "Couldn't setup a connection to destination";
                 break;
 
-            case 8:
+            case 9:
                 error = "IP address was malformed";
                 break;
 
-            case 9:
+            case 10:
+                error = "Connection aborted";
+                break;
+
+            case 11:
                 error = "Can't tell what actually went wrong";
                 break;
 
