@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.net.PortUnreachableException;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
@@ -72,6 +73,8 @@ public class MainActivity extends AppCompatActivity implements SharedPreferences
 
         PreferenceManager.setDefaultValues(this, R.xml.preferences, false);
         mSharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
+
+        // TODO check wifi connection
     }
 
     @Override
@@ -131,7 +134,7 @@ public class MainActivity extends AppCompatActivity implements SharedPreferences
         if (v.getId() == R.id.btn_join) {
 
             mUsername = mEditTextUsername.getText().toString();
-            if (!(mUsername.equals("") || mUsername.contains("\n") || mUsername.contains("\t"))) {
+            if (!(mUsername.equals("") || mUsername.contains("\n") || mUsername.contains("\t") || mUsername.contains(" "))) {
                 mButtonJoin.setText(getString(R.string.trying_connect));
                 disableUI();
                 // TODO set wakelock?
@@ -140,7 +143,7 @@ public class MainActivity extends AppCompatActivity implements SharedPreferences
                 ServerConnectionTask connectToServer = new ServerConnectionTask(this);
                 connectToServer.execute(new ConnectionParameters(mServerIP, mServerPORT, mClientUUID, mUsername));
             } else {
-                Toast.makeText(this, "Username should not be empty, or contain spaces, or span several lines", Toast.LENGTH_LONG).show();
+                Toast.makeText(this, "Invalid username: Must be non empty and not contain spaces, tabs or newlines", Toast.LENGTH_SHORT).show();
             }
 
         }
@@ -196,15 +199,15 @@ public class MainActivity extends AppCompatActivity implements SharedPreferences
             try {
                 serverIP = InetAddress.getByName(serverIPString);
             } catch (UnknownHostException e) {
-                Log.e(TAG, "Unknown Host, couldn't parse IP", e);
-                return new ConnectionResult(false, ConnectionResult.NO_ERROR);
+                Log.e(TAG, "UNKNOWN HOST", e);
+                return new ConnectionResult(false, ErrorCodes.INETADDRESS_UNKNOWN_HOST);
             }
             try {
                 socket = new DatagramSocket();
                 socket.setSoTimeout(NetworkConsts.SOCKET_TIMEOUT);
             } catch (SocketException e) {
-                Log.e(TAG, "Couldn't create UDP socket", e);
-                return new ConnectionResult(false, ConnectionResult.NO_ERROR);
+                Log.e(TAG, "SETTING TIMEOUT CAUSED UDP ERROR", e);
+                return new ConnectionResult(false, ErrorCodes.SOCKET_EXCEPTION);
             }
 
             // Exclusively send and receive to and from server
@@ -217,24 +220,28 @@ public class MainActivity extends AppCompatActivity implements SharedPreferences
             DatagramPacket packetOut = msgOut.getDatagramPacket();
 
             // variables for retries & packet buffer
-            boolean gotTimeout;
-            int tries = 0;
+            boolean retry;
+            int attempt = 1;
             byte[] bufIn;
             DatagramPacket packetIn = null;
-
+            int lastError = ErrorCodes.NO_ERROR;
             // try 5 times, then stop
-            while (tries < 5) {
-                gotTimeout = false;
+            while (attempt <= 5) {
+                retry = false;
                 try {
                     socket.send(packetOut);
                 } catch (IOException e) {
-                    Log.e(TAG, "Couldn't send", e);
-                    return new ConnectionResult(false, ConnectionResult.NO_ERROR);
+                    Log.e(TAG, "SEND FAILED!\n");
+                    if (e instanceof PortUnreachableException){
+                        Log.e(TAG, "DESTINATION UNREACHABLE", e);
+                        return new ConnectionResult(false, ErrorCodes.SOCKET_PORT_UNREACHABLE);
+                    } else {
+                        Log.e(TAG, "Something weird happened on send", e);
+                    }
                 }
-                tries++;
 
                 // Let UI thread know, that we are still trying to connect
-                publishProgress(tries);
+                publishProgress(attempt);
 
                 // create input buffer, after knowing send successful
                 bufIn = new byte[NetworkConsts.PAYLOAD_SIZE];
@@ -243,35 +250,52 @@ public class MainActivity extends AppCompatActivity implements SharedPreferences
                 try {
                     socket.receive(packetIn);
                 } catch (IOException e) {
+                    Log.e(TAG,"RECEIVE FAILED!\n");
                     if (e instanceof SocketTimeoutException) {
-                        Log.e(TAG, "Socket timed out trying to receive");
-                        gotTimeout = true;
-                    } else {
-                        Log.e(TAG, "Couldn't receive", e);
-                        return new ConnectionResult(false, ConnectionResult.NO_ERROR);
+                        Log.e(TAG, "SOCKET TIMEOUT");
+                        lastError = ErrorCodes.SOCKET_TIMEOUT;
+                        retry = true;
+                        attempt++;
+                    } else if(e instanceof PortUnreachableException) {
+                        Log.e(TAG, "NO SERVER RUNNING AT DESTINATION", e);
+                        lastError = ErrorCodes.SOCKET_PORT_UNREACHABLE;
+                        retry = true;
+                        attempt++;
+//                        return new ConnectionResult(false, ErrorCodes.SOCKET_PORT_UNREACHABLE);
+                    } else if(e instanceof IOException){
+                        Log.e(TAG, "SOCKET EXPLODED", e);
+                        return new ConnectionResult(false, ErrorCodes.SOCKET_IO_ERROR);
+                    } else{
+                        Log.e(TAG, "Something weird happened on receive", e);
+                        return new ConnectionResult(false, ErrorCodes.UNKNOWN_ERROR);
                     }
                 }
-                if (!gotTimeout) {
-                    // if we are here, we had no exception and received a valid UDP packet
+
+                if (!retry) {
+                    // if we are here, we had no exception and really received a valid UDP packet
                     break;
+                } else{
+                    if(attempt >5){
+                        return new ConnectionResult(false, lastError);
+                    }
                 }
             }
 
-            if (tries < 5) {
+//            if (attempt <= 5) {
                 MessageIn msgIn = new MessageIn(packetIn);
                 switch (msgIn.getType()) {
                     case MessageTypes.ACK_MESSAGE:
-                        return new ConnectionResult(true, ConnectionResult.NO_ERROR);
+                        return new ConnectionResult(true, ErrorCodes.NO_ERROR);
                     case MessageTypes.ERROR_MESSAGE:
                         return new ConnectionResult(false, Integer.parseInt(msgIn.getContent()));
                     default:
                         Log.e(TAG, "Switch default case. We shouldn't be here. Think harder!");
-                        return new ConnectionResult(false, ConnectionResult.NO_ERROR);
+                        return new ConnectionResult(false, ErrorCodes.NO_ERROR);
                 }
-            } else {
-                Log.e(TAG, "Server did not respond. Got 5 timeouts");
-                return new ConnectionResult(false, ConnectionResult.NO_ERROR);
-            }
+//            } else {
+//                Log.e(TAG, "Server did not respond. Got 5 timeouts");
+//                return new ConnectionResult(false, ConnectionResult.NO_ERROR);
+//            }
         }
 
 
@@ -279,6 +303,7 @@ public class MainActivity extends AppCompatActivity implements SharedPreferences
         public void onPostExecute(ConnectionResult result) {
             socket.close();
             if (result.getRegisterStatus()){
+                Toast.makeText(context, "Registration succesfull!", Toast.LENGTH_SHORT).show();
                 Intent intent = new Intent(context, ChatActivity.class);
                 intent.putExtra("username", mUsername);
                 intent.putExtra("uuid", mClientUUID);
@@ -287,14 +312,12 @@ public class MainActivity extends AppCompatActivity implements SharedPreferences
                 // TODO unset wakelock
                 // https://developer.android.com/training/scheduling/wakelock.html
                 int errorCode = result.getErrorCode();
-                String errorMessage = "";
-                if (errorCode >= 0 && errorCode < 5){
+                String errorMessage = "Unknown error";
+                if (errorCode >= 0 && errorCode < 7){
+                    // the protocol error codes and my own errorcodes
                     errorMessage = ErrorCodes.getStringError(errorCode);
-                } else{
-                    // TODO custom errors, maybe distinct between several network errors?
-                    errorMessage = "Communication failed";
                 }
-                Toast.makeText(context, "Couldn't join the chat: " + errorMessage, Toast.LENGTH_LONG).show();
+                Toast.makeText(context, "Couldn't join the chat: " + errorMessage, Toast.LENGTH_SHORT).show();
                 updateJoinButtonServerAddress();
                 enableUI();
             }
@@ -306,17 +329,19 @@ public class MainActivity extends AppCompatActivity implements SharedPreferences
             // TODO fix the numbers
             switch (values[0].intValue()) {
                 case 1:
-                    mButtonJoin.setText(getString(R.string.attempt_two));
+                    mButtonJoin.setText(getString(R.string.trying_connect));
                     break;
                 case 2:
-                    mButtonJoin.setText(getString(R.string.attempt_three));
+                    mButtonJoin.setText(getString(R.string.retry_1));
                     break;
                 case 3:
-                    mButtonJoin.setText(getString(R.string.attempt_four));
+                    mButtonJoin.setText(getString(R.string.retry_2));
                     break;
                 case 4:
-                    mButtonJoin.setText(getString(R.string.attempt_five));
+                    mButtonJoin.setText(getString(R.string.retry_3));
                     break;
+                case 5:
+                    mButtonJoin.setText(getString(R.string.retry_4));
                 default:
                     break;
             }

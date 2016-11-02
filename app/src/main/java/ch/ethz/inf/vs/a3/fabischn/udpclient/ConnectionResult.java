@@ -5,7 +5,7 @@ package ch.ethz.inf.vs.a3.fabischn.udpclient;
  */
 
 public class ConnectionResult {
-    public static final int NO_ERROR = -1;
+
     private final boolean mRegistered;
     private final int mErrorCode;
 
@@ -21,5 +21,4 @@ public class ConnectionResult {
     public int getErrorCode(){
         return mErrorCode;
     }
-
 }

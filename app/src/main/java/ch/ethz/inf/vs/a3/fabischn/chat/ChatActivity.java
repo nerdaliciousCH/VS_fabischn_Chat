@@ -23,11 +23,11 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.net.PortUnreachableException;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
-import java.util.Comparator;
 
 import ch.ethz.inf.vs.a3.fabischn.message.ErrorCodes;
 import ch.ethz.inf.vs.a3.fabischn.message.Message;
@@ -93,6 +93,8 @@ public class ChatActivity extends AppCompatActivity implements Button.OnClickLis
         mTextServer.setText(mServerIP + ":" + mServerPORT);
 
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+
+        // TODO check wifi connection
     }
 
     @Override
@@ -147,7 +149,7 @@ public class ChatActivity extends AppCompatActivity implements Button.OnClickLis
         // from http://stackoverflow.com/questions/6413700/android-proper-way-to-use-onbackpressed
         new AlertDialog.Builder(this)
                 .setTitle("Really Exit?")
-                .setMessage("Are you sure you want to exit?")
+                .setMessage("You will be unregistered from the chat ...")
                 .setNegativeButton(android.R.string.no, null)
                 .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
 
@@ -174,14 +176,14 @@ public class ChatActivity extends AppCompatActivity implements Button.OnClickLis
             try {
                 serverIP = InetAddress.getByName(serverIPString);
             } catch (UnknownHostException e) {
-                Log.e(TAG, "Hmmm... unknown host", e);
+                Log.e(TAG, "UNKOWN_HOST", e);
                 return null;
             }
             try {
                 socket = new DatagramSocket();
                 socket.setSoTimeout(NetworkConsts.SOCKET_TIMEOUT);
             } catch (SocketException e) {
-                Log.e(TAG, "Couldn't create UDP socket", e);
+                Log.e(TAG, "SETTING TIMEOUT CAUSED UDP ERROR", e);
                 return null;
             }
 
@@ -193,7 +195,12 @@ public class ChatActivity extends AppCompatActivity implements Button.OnClickLis
             try {
                 socket.send(packetOut);
             } catch (IOException e) {
-                Log.e(TAG, "Couldn't send", e);
+                Log.e(TAG, "SEND FAILED!\n");
+                if (e instanceof PortUnreachableException){
+                    Log.e(TAG, "DESTINATION UNREACHABLE", e);
+                } else {
+                    Log.e(TAG, "Something weird happened on send", e);
+                }
                 return null;
             }
 
@@ -212,10 +219,14 @@ public class ChatActivity extends AppCompatActivity implements Button.OnClickLis
                     if (e instanceof SocketTimeoutException) {
                         Log.e(TAG, "Socket timed out trying to receive");
                         return messages;
-                    } else {
-                        Log.e(TAG, "Couldn't receive", e);
-                        return null;
+                    } else if(e instanceof PortUnreachableException) {
+                        Log.e(TAG, "NO SERVER RUNNING AT DESTINATION", e);
+                    } else if(e instanceof IOException){
+                        Log.e(TAG, "SOCKET EXPLODED", e);
+                    } else{
+                        Log.e(TAG, "Something weird happened on receive", e);
                     }
+                    return null;
                 }
             }
         }
@@ -231,11 +242,15 @@ public class ChatActivity extends AppCompatActivity implements Button.OnClickLis
                 }
                 builder.deleteCharAt(builder.length() - 1);
                 mTextChatlog.setText(builder.toString());
+                readyUIforFetch();
+            } else if (messageIns == null){
+                // maybe make queue and errorcode a pair
+                // TODO go back to mainactivity
+            } else{
+                mTextChatlog.setText("no messages on server");
+                readyUIforFetch();
             }
 
-            // Reset UI
-            mTextChatlog.setText(builder.toString());
-            readyUIforFetch();
         }
 
     }
@@ -262,15 +277,15 @@ public class ChatActivity extends AppCompatActivity implements Button.OnClickLis
             try {
                 serverIP = InetAddress.getByName(serverIPString);
             } catch (UnknownHostException e) {
-                Log.e(TAG, "Unknown Host, couldn't parse IP", e);
-                return new ConnectionResult(false, ConnectionResult.NO_ERROR);
+                Log.e(TAG, "UNKNOWN HOST", e);
+                return new ConnectionResult(false, ErrorCodes.INETADDRESS_UNKNOWN_HOST);
             }
             try {
                 socket = new DatagramSocket();
                 socket.setSoTimeout(NetworkConsts.SOCKET_TIMEOUT);
             } catch (SocketException e) {
-                Log.e(TAG, "Couldn't create UDP socket", e);
-                return new ConnectionResult(false, ConnectionResult.NO_ERROR);
+                Log.e(TAG, "SETTING TIMEOUT CAUSED UDP ERROR", e);
+                return new ConnectionResult(false, ErrorCodes.SOCKET_EXCEPTION);
             }
 
             // Exclusively send and receive to and from server
@@ -289,8 +304,13 @@ public class ChatActivity extends AppCompatActivity implements Button.OnClickLis
             try {
                 socket.send(packetOut);
             } catch (IOException e) {
-                Log.e(TAG, "Couldn't send", e);
-                return new ConnectionResult(false, ConnectionResult.NO_ERROR);
+                Log.e(TAG, "SEND FAILED!\n");
+                if (e instanceof PortUnreachableException){
+                    Log.e(TAG, "DESTINATION UNREACHABLE", e);
+                    return new ConnectionResult(false, ErrorCodes.SOCKET_PORT_UNREACHABLE);
+                } else {
+                    Log.e(TAG, "Something weird happened on send", e);
+                }
             }
 
             // create input buffer, after knowing send successful
@@ -300,20 +320,29 @@ public class ChatActivity extends AppCompatActivity implements Button.OnClickLis
             try {
                 socket.receive(packetIn);
             } catch (IOException e) {
+                Log.e(TAG,"RECEIVE FAILED!\n");
                 if (e instanceof SocketTimeoutException) {
-                    Log.d(TAG, "Socket TIMEOUT");
-                } else {
-                    Log.e(TAG, "Couldn't receive", e);
-                    return new ConnectionResult(false, ConnectionResult.NO_ERROR);
+                    Log.e(TAG, "SOCKET TIMEOUT");
+                    return new ConnectionResult(false, ErrorCodes.SOCKET_TIMEOUT);
+                } else if(e instanceof PortUnreachableException) {
+                    Log.e(TAG, "NO SERVER RUNNING AT DESTINATION", e);
+                    return new ConnectionResult(false, ErrorCodes.SOCKET_PORT_UNREACHABLE);
+                } else if(e instanceof IOException){
+                    Log.e(TAG, "SOCKET EXPLODED", e);
+                    return new ConnectionResult(false, ErrorCodes.SOCKET_IO_ERROR);
+                } else{
+                    Log.e(TAG, "Something weird happened on receive", e);
+                    return new ConnectionResult(false, ErrorCodes.UNKNOWN_ERROR);
                 }
             }
 
             MessageIn msgIn = new MessageIn(packetIn);
             if (msgIn.getType().equals(MessageTypes.ACK_MESSAGE)) {
-                return new ConnectionResult(true, ConnectionResult.NO_ERROR);
+                return new ConnectionResult(true, ErrorCodes.NO_ERROR);
             } else {
-                Toast.makeText(ChatActivity.this, ErrorCodes.getStringError(Integer.parseInt(msgIn.getMessage())), Toast.LENGTH_LONG).show();
-                return new ConnectionResult(false, ConnectionResult.NO_ERROR);
+                int errorCode = Integer.parseInt(msgIn.getContent());
+                Toast.makeText(ChatActivity.this, "Server responded: " + ErrorCodes.getStringError(errorCode), Toast.LENGTH_LONG).show();
+                return new ConnectionResult(false, errorCode);
             }
         }
 

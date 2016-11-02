@@ -5,14 +5,17 @@
     <string name="menu_settings">Settings</string>
     <string name="label_setting_ip">Chat server\'s IP Address</string>
     <string name="label_setting_port">Chat server\'s UDP Port</string>
+    <string name="label_username">Username:</string>
+    <string name="label_server">Server:</string>
+
     <string name="trying_connect">Trying to connect ...</string>
     <string name="connected">Connected!</string>
     <string name="get_chat_log">Get chat log</string>
     <string name="fetching_chat_log">Fetching chat log ...</string>
-    <string name="attempt_two">Connection attempts: 2</string>
-    <string name="attempt_three">Connection attempts: 3</string>
-    <string name="attempt_four">Connection attempts: 4</string>
-    <string name="attempt_five">Connection attempts: 5</string>
+    <string name="retry_1">Retry: 1</string>
+    <string name="retry_2">Retry: 2</string>
+    <string name="retry_3">Retry: 3</string>
+    <string name="retry_4">Retry: 4</string>
 
 
     <!-- keys for preferences -->
