@@ -1,6 +1,5 @@
 package ch.ethz.inf.vs.a3.fabischn.chat;
 
-import android.app.Activity;
 import android.content.Context;
 import android.os.AsyncTask;
 import android.os.Bundle;
@@ -21,29 +20,29 @@ import ch.ethz.inf.vs.a3.fabischn.message.MessageIn;
 import ch.ethz.inf.vs.a3.fabischn.message.MessageOut;
 import ch.ethz.inf.vs.a3.fabischn.message.MessageTypes;
 import ch.ethz.inf.vs.a3.fabischn.udpclient.ConnectionParameters;
-import ch.ethz.inf.vs.a3.fabischn.udpclient.ConnectionResult;
+import ch.ethz.inf.vs.a3.fabischn.udpclient.RegistrationResult;
 import ch.ethz.inf.vs.a3.fabischn.udpclient.NetworkConsts;
 
 
 // Fixing screenrotaion with AsyncTasks -> retain the instance, only ok with fragments -> wrap asynctask in fragment
 // http://www.androiddesignpatterns.com/2013/04/retaining-objects-across-config-changes.html
-public class MainFragment extends Fragment {
+public class RegisterFragment extends Fragment {
 
-    private static final String TAG = MainFragment.class.getSimpleName();
+    private static final String TAG = RegisterFragment.class.getSimpleName();
 
     /**
      * Callback interface through which the fragment will report the
      * task's progress and results back to the Activity.
      */
-    interface TaskCallbacks {
+    interface RegisterCallbacks {
         void onProgressUpdate(int value);
 
         void onCancelled();
 
-        void onPostExecute(ConnectionResult result);
+        void onPostExecute(RegistrationResult result);
     }
 
-    private TaskCallbacks mCallbacks;
+    private RegisterCallbacks mCallbacks;
     private RegisterTask mRegisterTask;
     private ConnectionParameters mConnectionParameters;
 
@@ -58,7 +57,7 @@ public class MainFragment extends Fragment {
         // Calling this with Activity as parameter is deprecated
         // http://stackoverflow.com/questions/32083053/android-fragment-onattach-deprecated
         super.onAttach(context);
-        mCallbacks = (TaskCallbacks) context;
+        mCallbacks = (RegisterCallbacks) context;
 
     }
 
@@ -76,13 +75,15 @@ public class MainFragment extends Fragment {
         Bundle connectionParameters = this.getArguments();
         if (connectionParameters != null) {
             mConnectionParameters = (ConnectionParameters) connectionParameters.getSerializable(getString(R.string.key_connection_parameters));
+            // Create and execute the background task.
+            mRegisterTask = new RegisterTask();
+            mRegisterTask.execute(mConnectionParameters);
         } else {
             Log.e(TAG, "Kabooom: No bundle for fragment, no connection params");
+            // TODO finish
         }
 
-        // Create and execute the background task.
-        mRegisterTask = new RegisterTask();
-        mRegisterTask.execute(mConnectionParameters);
+
     }
 
     public void cancelRegisterTask() {
@@ -105,7 +106,7 @@ public class MainFragment extends Fragment {
      * Fragment's onDestroy() method have been called.
      */
 
-    public class RegisterTask extends AsyncTask<ConnectionParameters, Integer, ConnectionResult> {
+    public class RegisterTask extends AsyncTask<ConnectionParameters, Integer, RegistrationResult> {
 
         private final String TAG = RegisterTask.class.getSimpleName();
 
@@ -113,7 +114,7 @@ public class MainFragment extends Fragment {
 
 
         @Override
-        public ConnectionResult doInBackground(ConnectionParameters... params) {
+        public RegistrationResult doInBackground(ConnectionParameters... params) {
 
             String serverIPString = params[0].getServerIP();
             int serverPort = params[0].getServerPORT();
@@ -125,14 +126,14 @@ public class MainFragment extends Fragment {
                 serverIP = InetAddress.getByName(serverIPString);
             } catch (UnknownHostException e) {
                 Log.e(TAG, "UNKNOWN HOST", e);
-                return new ConnectionResult(false, ErrorCodes.INETADDRESS_UNKNOWN_HOST);
+                return new RegistrationResult(false, ErrorCodes.INETADDRESS_UNKNOWN_HOST);
             }
             try {
                 socket = new DatagramSocket();
                 socket.setSoTimeout(NetworkConsts.SOCKET_TIMEOUT);
             } catch (SocketException e) {
                 Log.e(TAG, "SETTING TIMEOUT CAUSED UDP ERROR", e);
-                return new ConnectionResult(false, ErrorCodes.SOCKET_EXCEPTION);
+                return new RegistrationResult(false, ErrorCodes.SOCKET_EXCEPTION);
             }
 
             // Exclusively send and receive to and from server
@@ -159,7 +160,7 @@ public class MainFragment extends Fragment {
                     Log.e(TAG, "SEND FAILED!\n");
                     if (e instanceof PortUnreachableException) {
                         Log.e(TAG, "DESTINATION UNREACHABLE", e);
-                        return new ConnectionResult(false, ErrorCodes.SOCKET_PORT_UNREACHABLE);
+                        return new RegistrationResult(false, ErrorCodes.SOCKET_PORT_UNREACHABLE);
                     } else {
                         Log.e(TAG, "Something weird happened on send", e);
                     }
@@ -189,10 +190,10 @@ public class MainFragment extends Fragment {
                         attempt++;
                     } else if (e instanceof IOException) {
                         Log.e(TAG, "SOCKET EXPLODED", e);
-                        return new ConnectionResult(false, ErrorCodes.SOCKET_IO_ERROR);
+                        return new RegistrationResult(false, ErrorCodes.SOCKET_IO_ERROR);
                     } else {
                         Log.e(TAG, "Something weird happened on receive", e);
-                        return new ConnectionResult(false, ErrorCodes.UNKNOWN_ERROR);
+                        return new RegistrationResult(false, ErrorCodes.UNKNOWN_ERROR);
                     }
                 }
                 Log.d(TAG, "we made it throug...");
@@ -205,7 +206,7 @@ public class MainFragment extends Fragment {
                     Log.d(TAG, "retry");
                     if (attempt > 5) {
                         Log.d(TAG, "attempt > 5");
-                        return new ConnectionResult(false, lastError);
+                        return new RegistrationResult(false, lastError);
                     }
                 }
             }
@@ -214,22 +215,22 @@ public class MainFragment extends Fragment {
                 MessageIn msgIn = new MessageIn(packetIn);
                 switch (msgIn.getType()) {
                     case MessageTypes.ACK_MESSAGE:
-                        return new ConnectionResult(true, ErrorCodes.NO_ERROR);
+                        return new RegistrationResult(true, ErrorCodes.NO_ERROR);
                     case MessageTypes.ERROR_MESSAGE:
-                        return new ConnectionResult(false, Integer.parseInt(msgIn.getContent()));
+                        return new RegistrationResult(false, Integer.parseInt(msgIn.getContent()));
                     default:
                         Log.e(TAG, "Switch default case. We shouldn't be here. Think harder!");
-                        return new ConnectionResult(false, ErrorCodes.NO_ERROR);
+                        return new RegistrationResult(false, ErrorCodes.NO_ERROR);
                 }
             } else {
                 Log.e(TAG, "Server did not respond. Got 5 timeouts");
-                return new ConnectionResult(false, ErrorCodes.NO_ERROR);
+                return new RegistrationResult(false, ErrorCodes.NO_ERROR);
             }
         }
 
 
         @Override
-        public void onPostExecute(ConnectionResult result) {
+        public void onPostExecute(RegistrationResult result) {
             if (socket != null) {
                 socket.close();
             }

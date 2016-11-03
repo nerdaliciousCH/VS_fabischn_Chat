@@ -1,6 +1,5 @@
 package ch.ethz.inf.vs.a3.fabischn.chat;
 
-import android.app.FragmentManager;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
@@ -19,13 +18,13 @@ import java.util.UUID;
 
 import ch.ethz.inf.vs.a3.fabischn.message.ErrorCodes;
 import ch.ethz.inf.vs.a3.fabischn.udpclient.ConnectionParameters;
-import ch.ethz.inf.vs.a3.fabischn.udpclient.ConnectionResult;
+import ch.ethz.inf.vs.a3.fabischn.udpclient.RegistrationResult;
 
-public class MainActivity extends AppCompatActivity implements SharedPreferences.OnSharedPreferenceChangeListener, Button.OnClickListener, MainFragment.TaskCallbacks {
+public class MainActivity extends AppCompatActivity implements SharedPreferences.OnSharedPreferenceChangeListener, Button.OnClickListener, RegisterFragment.RegisterCallbacks {
 
 
     private static final String TAG = MainActivity.class.getSimpleName();
-    private static final String TAG_MAINFRAGMENT = MainFragment.class.getSimpleName();
+    private static final String TAG_REGISTERFRAGMENT = RegisterFragment.class.getCanonicalName();
 
     private static String KEY_SETTING_IP;
     private static String KEY_SETTING_PORT;
@@ -41,7 +40,7 @@ public class MainActivity extends AppCompatActivity implements SharedPreferences
     private Button mButtonJoin;
     private RelativeLayout mLayoutProgressBar;
 
-    private MainFragment mMainFragment;
+    private RegisterFragment mRegisterFragment;
 
     private SharedPreferences mSharedPreferences;
 //    private ServerConnectionTask mConnectionTask;
@@ -70,7 +69,7 @@ public class MainActivity extends AppCompatActivity implements SharedPreferences
         enableUI();
 
         android.support.v4.app.FragmentManager fragmentManager = getSupportFragmentManager();
-        mMainFragment = (MainFragment) fragmentManager.findFragmentByTag(TAG_MAINFRAGMENT);
+        mRegisterFragment = (RegisterFragment) fragmentManager.findFragmentByTag(TAG_REGISTERFRAGMENT);
 
         // TODO check wifi connection
         // TODO where does usernametext go when we come back from settings activity?
@@ -93,12 +92,13 @@ public class MainActivity extends AppCompatActivity implements SharedPreferences
     protected void onSaveInstanceState(Bundle outState) {
         outState.putBoolean(getString(R.string.key_button_join_enabled), mButtonJoin.isEnabled());
         outState.putString(getString(R.string.key_button_join_text), mButtonJoin.getText().toString());
-        outState.putBoolean(getString(R.string.key_text_username_enabled), mEditTextUsername.isEnabled());
+        outState.putBoolean(getString(R.string.key_edittext_username_enabled), mEditTextUsername.isEnabled());
+        // TODO edittext text
         boolean visible = false;
         if (mLayoutProgressBar.getVisibility() == View.VISIBLE) {
             visible = true;
         }
-        outState.putBoolean(getString(R.string.key_layout_progress_visibility), visible);
+        outState.putBoolean(getString(R.string.key_layout_main_progress_visibility), visible);
 
         super.onSaveInstanceState(outState);
     }
@@ -106,10 +106,11 @@ public class MainActivity extends AppCompatActivity implements SharedPreferences
     @Override
     protected void onRestoreInstanceState(Bundle savedInstanceState) {
         super.onRestoreInstanceState(savedInstanceState);
-        mEditTextUsername.setEnabled(savedInstanceState.getBoolean(getString(R.string.key_text_username_enabled)));
+        mEditTextUsername.setEnabled(savedInstanceState.getBoolean(getString(R.string.key_edittext_username_enabled)));
         mButtonJoin.setEnabled(savedInstanceState.getBoolean(getString(R.string.key_button_join_enabled)));
         mButtonJoin.setText(savedInstanceState.getString(getString(R.string.key_button_join_text)));
-        boolean visible = savedInstanceState.getBoolean(getString(R.string.key_layout_progress_visibility));
+        // TODO edittext text
+        boolean visible = savedInstanceState.getBoolean(getString(R.string.key_layout_main_progress_visibility));
         if (visible) {
             mLayoutProgressBar.setVisibility(View.VISIBLE);
         }
@@ -155,13 +156,13 @@ public class MainActivity extends AppCompatActivity implements SharedPreferences
                 mClientUUID = UUID.randomUUID().toString();
                 mButtonJoin.setText(getString(R.string.trying_connect));
                 disableUI();
-                removeFragment();
-                mMainFragment = new MainFragment();
+                removeRegisterFragment();
+                mRegisterFragment = new RegisterFragment();
                 Bundle connParams = new Bundle();
                 connParams.putSerializable(getString(R.string.key_connection_parameters), new ConnectionParameters(mServerIP, mServerPORT, mClientUUID, mUsername));
-                mMainFragment.setArguments(connParams);
+                mRegisterFragment.setArguments(connParams);
                 android.support.v4.app.FragmentManager fragmentManager = getSupportFragmentManager();
-                fragmentManager.beginTransaction().add(mMainFragment, TAG_MAINFRAGMENT).commit();
+                fragmentManager.beginTransaction().add(mRegisterFragment, TAG_REGISTERFRAGMENT).commit();
 
             } else {
                 Toast.makeText(this, "Invalid username: Must be non empty and not contain spaces, tabs or newlines", Toast.LENGTH_SHORT).show();
@@ -186,16 +187,16 @@ public class MainActivity extends AppCompatActivity implements SharedPreferences
         mEditTextUsername.setEnabled(true);
     }
 
-    public void removeFragment() {
+    public void removeRegisterFragment() {
 
         android.support.v4.app.FragmentManager fragmentManager = getSupportFragmentManager();
-        if (mMainFragment == null) {
-            mMainFragment = (MainFragment) fragmentManager.findFragmentByTag(TAG_MAINFRAGMENT);
+        if (mRegisterFragment == null) {
+            mRegisterFragment = (RegisterFragment) fragmentManager.findFragmentByTag(TAG_REGISTERFRAGMENT);
         }
-        if (mMainFragment != null) {
-            mMainFragment.cancelRegisterTask();
-            fragmentManager.beginTransaction().remove(mMainFragment).commit();
-            mMainFragment = null;
+        if (mRegisterFragment != null) {
+            mRegisterFragment.cancelRegisterTask();
+            fragmentManager.beginTransaction().remove(mRegisterFragment).commit();
+            mRegisterFragment = null;
         }
 
     }
@@ -234,17 +235,17 @@ public class MainActivity extends AppCompatActivity implements SharedPreferences
     @Override
     public void onCancelled() {
         Toast.makeText(this, "Registration was aborted", Toast.LENGTH_SHORT).show();
-        mMainFragment = null;
+        mRegisterFragment = null;
         updateJoinButtonServerAddress();
         enableUI();
     }
 
     @Override
-    public void onPostExecute(ConnectionResult result) {
+    public void onPostExecute(RegistrationResult result) {
         Log.d(TAG, "onPostExecute");
         if (result.getRegisterStatus()) {
             Log.d(TAG, "success register");
-            removeFragment();
+            removeRegisterFragment();
             Toast.makeText(this, "Registration succesfull!", Toast.LENGTH_SHORT).show();
             Intent intent = new Intent(this, ChatActivity.class);
             intent.putExtra("username", mUsername);

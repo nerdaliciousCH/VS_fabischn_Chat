@@ -1,11 +1,8 @@
 package ch.ethz.inf.vs.a3.fabischn.chat;
 
-import android.app.Activity;
-import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.v4.app.NavUtils;
@@ -19,30 +16,20 @@ import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import java.io.IOException;
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
-import java.net.InetAddress;
-import java.net.PortUnreachableException;
-import java.net.SocketException;
-import java.net.SocketTimeoutException;
-import java.net.UnknownHostException;
 import java.util.ArrayList;
 
 import ch.ethz.inf.vs.a3.fabischn.message.ErrorCodes;
 import ch.ethz.inf.vs.a3.fabischn.message.Message;
-import ch.ethz.inf.vs.a3.fabischn.message.MessageComparator;
 import ch.ethz.inf.vs.a3.fabischn.message.MessageIn;
-import ch.ethz.inf.vs.a3.fabischn.message.MessageOut;
-import ch.ethz.inf.vs.a3.fabischn.message.MessageTypes;
 import ch.ethz.inf.vs.a3.fabischn.queue.PriorityQueue;
 import ch.ethz.inf.vs.a3.fabischn.udpclient.ConnectionParameters;
-import ch.ethz.inf.vs.a3.fabischn.udpclient.ConnectionResult;
-import ch.ethz.inf.vs.a3.fabischn.udpclient.NetworkConsts;
+import ch.ethz.inf.vs.a3.fabischn.udpclient.DeregistrationResult;
 
-public class ChatActivity extends AppCompatActivity implements Button.OnClickListener {
+public class ChatActivity extends AppCompatActivity implements Button.OnClickListener, DeregisterFragment.DeregisterCallbacks, FetchFragment.FetchCallbacks{
 
     private static final String TAG = ChatActivity.class.getSimpleName();
+    private static final String TAG_DEREGISTERFRAGMENT = DeregisterFragment.class.getCanonicalName();
+    private static final String TAG_FETCHFRAGMENT = FetchFragment.class.getCanonicalName();
 
     private static String KEY_SETTING_IP;
     private static String KEY_SETTING_PORT;
@@ -61,6 +48,9 @@ public class ChatActivity extends AppCompatActivity implements Button.OnClickLis
     private Button mButtonChatlog;
 
     private RelativeLayout mLayoutProgressBar;
+
+    private FetchFragment mFetchFragment;
+    private DeregisterFragment mDeregisterFragment;
 
 
     private SharedPreferences mSharedPreferences;
@@ -94,6 +84,10 @@ public class ChatActivity extends AppCompatActivity implements Button.OnClickLis
 
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
 
+        android.support.v4.app.FragmentManager fragmentManager = getSupportFragmentManager();
+        mDeregisterFragment = (DeregisterFragment) fragmentManager.findFragmentByTag(TAG_DEREGISTERFRAGMENT);
+        mFetchFragment = (FetchFragment) fragmentManager.findFragmentByTag(TAG_FETCHFRAGMENT);
+
         // TODO check wifi connection
     }
 
@@ -104,11 +98,51 @@ public class ChatActivity extends AppCompatActivity implements Button.OnClickLis
     }
 
     @Override
+    protected void onPause() {
+        super.onPause();
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        // Save UI state
+        outState.putBoolean(getString(R.string.key_button_chatlog_enabled), mButtonChatlog.isEnabled());
+        outState.putString(getString(R.string.key_button_chatlog_text), mButtonChatlog.getText().toString());
+        outState.putBoolean(getString(R.string.key_text_chatlog_enabled), mTextChatlog.isEnabled());
+        outState.putString(getString(R.string.key_text_chatlog_text), mTextChatlog.getText().toString());
+        boolean visible = false;
+        if (mLayoutProgressBar.getVisibility() == View.VISIBLE) {
+            visible = true;
+        }
+        outState.putBoolean(getString(R.string.key_layout_chat_progress_visibility), visible);
+
+        super.onSaveInstanceState(outState);
+    }
+
+    @Override
+    protected void onRestoreInstanceState(Bundle savedInstanceState) {
+        super.onRestoreInstanceState(savedInstanceState);
+        // Restore UI state
+        mButtonChatlog.setEnabled(savedInstanceState.getBoolean(getString(R.string.key_button_chatlog_enabled)));
+        mButtonChatlog.setText(savedInstanceState.getString(getString(R.string.key_button_chatlog_text)));
+        mTextChatlog.setEnabled(savedInstanceState.getBoolean(getString(R.string.key_text_chatlog_enabled)));
+        mTextChatlog.setText(savedInstanceState.getString(getString(R.string.key_text_chatlog_text)));
+        boolean visible = savedInstanceState.getBoolean(getString(R.string.key_layout_chat_progress_visibility));
+        if (visible) {
+            mLayoutProgressBar.setVisibility(View.VISIBLE);
+        }
+    }
+
+    @Override
     public void onClick(View v) {
         if (v.getId() == R.id.btn_chatlog) {
             disableUIforFetch();
-            FetchChatlogTask fetchChatlogTask = new FetchChatlogTask();
-            fetchChatlogTask.execute(new ConnectionParameters(mServerIP, mServerPORT, mClientUUID, mUsername));
+            removeFetchFragment();
+            mFetchFragment = new FetchFragment();
+            Bundle params = new Bundle();
+            params.putSerializable(getString(R.string.key_connection_parameters), new ConnectionParameters(mServerIP, mServerPORT, mClientUUID, mUsername));
+            mFetchFragment.setArguments(params);
+            android.support.v4.app.FragmentManager fragmentManager = getSupportFragmentManager();
+            fragmentManager.beginTransaction().add(mFetchFragment, TAG_FETCHFRAGMENT).commit();
         }
     }
 
@@ -116,7 +150,7 @@ public class ChatActivity extends AppCompatActivity implements Button.OnClickLis
     // The android back button on the bottom
     @Override
     public void onBackPressed() {
-        deregister();
+        deregister(BackActions.SYSTEM_BACK);
         // onPostExecute will call super.onBackPressed();
     }
 
@@ -126,7 +160,7 @@ public class ChatActivity extends AppCompatActivity implements Button.OnClickLis
         // from https://www.tutorialspoint.com/android/android_navigation.htm
         switch (item.getItemId()) {
             case android.R.id.home:
-                deregister();
+                deregister(BackActions.NAV_UP);
                 return true;
         }
         return false;
@@ -145,7 +179,7 @@ public class ChatActivity extends AppCompatActivity implements Button.OnClickLis
         mButtonChatlog.setEnabled(true);
     }
 
-    private void deregister() {
+    private void deregister(final BackActions backSource) {
         // from http://stackoverflow.com/questions/6413700/android-proper-way-to-use-onbackpressed
         new AlertDialog.Builder(this)
                 .setTitle("Really Exit?")
@@ -153,217 +187,110 @@ public class ChatActivity extends AppCompatActivity implements Button.OnClickLis
                 .setNegativeButton(android.R.string.no, null)
                 .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
 
+                    // TODO put backsource into Bundle
+                    // TODO freeze backbuttons until we get callback?
+
                     public void onClick(DialogInterface arg0, int arg1) {
-                        DeregisterFromServerTask deregisterTask = new DeregisterFromServerTask(ChatActivity.this, BackActions.NAV_UP);
-                        deregisterTask.execute(new ConnectionParameters(mServerIP, mServerPORT, mClientUUID, mUsername));
+//                        DeregisterFromServerTask deregisterTask = new DeregisterFromServerTask(ChatActivity.this, BackActions.NAV_UP);
+//                        deregisterTask.execute(new ConnectionParameters(mServerIP, mServerPORT, mClientUUID, mUsername));
+                        removeDeregisterFragment();
+                        mDeregisterFragment = new DeregisterFragment();
+                        Bundle params = new Bundle();
+                        params.putSerializable(getString(R.string.key_connection_parameters), new ConnectionParameters(mServerIP, mServerPORT, mClientUUID, mUsername));
+                        params.putSerializable(getString(R.string.key_back_source), backSource); // enums are inherently serializable
+                        mDeregisterFragment.setArguments(params);
+                        android.support.v4.app.FragmentManager fragmentManager = getSupportFragmentManager();
+                        fragmentManager.beginTransaction().add(mDeregisterFragment, TAG_DEREGISTERFRAGMENT).commit();
                     }
                 }).create().show();
     }
 
-    private class FetchChatlogTask extends AsyncTask<ConnectionParameters, Integer, PriorityQueue<Message>> {
+    public void removeDeregisterFragment() {
 
-        private DatagramSocket socket = null;
-
-        @Override
-        protected PriorityQueue<Message> doInBackground(ConnectionParameters... params) {
-
-            String serverIPString = params[0].getServerIP();
-            int serverPort = params[0].getServerPORT();
-            String username = params[0].getUsername();
-            String clientUUID = params[0].getClientUUID();
-
-            InetAddress serverIP = null;
-            try {
-                serverIP = InetAddress.getByName(serverIPString);
-            } catch (UnknownHostException e) {
-                Log.e(TAG, "UNKOWN_HOST", e);
-                return null;
-            }
-            try {
-                socket = new DatagramSocket();
-                socket.setSoTimeout(NetworkConsts.SOCKET_TIMEOUT);
-            } catch (SocketException e) {
-                Log.e(TAG, "SETTING TIMEOUT CAUSED UDP ERROR", e);
-                return null;
-            }
-
-            // Exclusively send and receive to and from server
-            socket.connect(serverIP, serverPort);
-
-            MessageOut msgOut = new MessageOut(MessageTypes.RETRIEVE_CHAT_LOG, username, clientUUID, null, serverIP, serverPort);
-            DatagramPacket packetOut = msgOut.getDatagramPacket();
-            try {
-                socket.send(packetOut);
-            } catch (IOException e) {
-                Log.e(TAG, "SEND FAILED!\n");
-                if (e instanceof PortUnreachableException) {
-                    Log.e(TAG, "DESTINATION UNREACHABLE", e);
-                } else {
-                    Log.e(TAG, "Something weird happened on send", e);
-                }
-                return null;
-            }
-
-            PriorityQueue<Message> messages = new PriorityQueue<Message>(new MessageComparator());
-
-            byte[] bufIn;
-            DatagramPacket packetIn;
-
-            while (true) {
-                bufIn = new byte[NetworkConsts.PAYLOAD_SIZE];
-                packetIn = new DatagramPacket(bufIn, bufIn.length);
-                try {
-                    socket.receive(packetIn);
-                    messages.add(new MessageIn(packetIn));
-                } catch (IOException e) {
-                    if (e instanceof SocketTimeoutException) {
-                        Log.e(TAG, "Socket timed out trying to receive");
-                        return messages;
-                    } else if (e instanceof PortUnreachableException) {
-                        Log.e(TAG, "NO SERVER RUNNING AT DESTINATION", e);
-                    } else if (e instanceof IOException) {
-                        Log.e(TAG, "SOCKET EXPLODED", e);
-                    } else {
-                        Log.e(TAG, "Something weird happened on receive", e);
-                    }
-                    return null;
-                }
-            }
+        android.support.v4.app.FragmentManager fragmentManager = getSupportFragmentManager();
+        if (mDeregisterFragment == null) {
+            mDeregisterFragment = (DeregisterFragment) fragmentManager.findFragmentByTag(TAG_DEREGISTERFRAGMENT);
         }
-
-        @Override
-        protected void onPostExecute(PriorityQueue<Message> messageIns) {
-            StringBuilder builder = new StringBuilder();
-
-            if (messageIns != null && !messageIns.isEmpty()) {
-                while (!messageIns.isEmpty()) {
-                    MessageIn msg = (MessageIn) messageIns.poll();
-                    builder.append(msg.getContent() + "\n");
-                }
-                builder.deleteCharAt(builder.length() - 1);
-                mTextChatlog.setText(builder.toString());
-                readyUIforFetch();
-            } else if (messageIns == null) {
-                // maybe make queue and errorcode a pair
-                // TODO go back to mainactivity
-            } else {
-                mTextChatlog.setText("no messages on server");
-                readyUIforFetch();
-            }
-
+        if (mDeregisterFragment != null) {
+            mDeregisterFragment.cancelDeregisterTask();
+            fragmentManager.beginTransaction().remove(mDeregisterFragment).commit();
+            mDeregisterFragment = null;
         }
+    }
+
+    public void removeFetchFragment() {
+
+        android.support.v4.app.FragmentManager fragmentManager = getSupportFragmentManager();
+        if (mFetchFragment == null) {
+            mFetchFragment= (FetchFragment) fragmentManager.findFragmentByTag(TAG_FETCHFRAGMENT);
+        }
+        if (mFetchFragment!= null) {
+            mFetchFragment.cancelFetchTask();
+            fragmentManager.beginTransaction().remove(mFetchFragment).commit();
+            mFetchFragment= null;
+        }
+    }
+
+    @Override
+    public void onProgressUpdateDeregister(int value) {
 
     }
 
-    private class DeregisterFromServerTask extends AsyncTask<ConnectionParameters, Void, ConnectionResult> {
+    @Override
+    public void onCancelledDeregister() {
 
-        private Context context;
-        private DatagramSocket socket;
-        private BackActions source;
+    }
 
-        public DeregisterFromServerTask(Context context, BackActions source) {
-            this.context = context;
-            this.source = source;
-        }
-
-        @Override
-        protected ConnectionResult doInBackground(ConnectionParameters... params) {
-            String serverIPString = params[0].getServerIP();
-            int serverPort = params[0].getServerPORT();
-            String username = params[0].getUsername();
-            String clientUUID = params[0].getClientUUID();
-
-            InetAddress serverIP = null;
-            try {
-                serverIP = InetAddress.getByName(serverIPString);
-            } catch (UnknownHostException e) {
-                Log.e(TAG, "UNKNOWN HOST", e);
-                return new ConnectionResult(false, ErrorCodes.INETADDRESS_UNKNOWN_HOST);
+    @Override
+    public void onPostExecuteDeregister(DeregistrationResult result) {
+        if (result.getDeregisterStatus()) {
+            // TODO kill any running fetchtask
+            switch (result.getBackSource()) {
+                case NAV_UP:
+                    // TODO: MainActivity will be created and resumed
+                    NavUtils.navigateUpFromSameTask(this);
+                    break;
+                case SYSTEM_BACK:
+                    // TODO: MainActivity will be resumed
+                    super.onBackPressed();
+                    break;
+                default:
+                    Log.e(TAG, "Switch case default. Shouldn't be here, think harder!");
             }
-            try {
-                socket = new DatagramSocket();
-                socket.setSoTimeout(NetworkConsts.SOCKET_TIMEOUT);
-            } catch (SocketException e) {
-                Log.e(TAG, "SETTING TIMEOUT CAUSED UDP ERROR", e);
-                return new ConnectionResult(false, ErrorCodes.SOCKET_EXCEPTION);
-            }
-
-            // Exclusively send and receive to and from server
-            socket.connect(serverIP, serverPort);
-
-
-            // create outgoing registration packet
-            // we can safely retransmit the same object multiple times
-            MessageOut msgOut = new MessageOut(MessageTypes.DEREGISTER, username, clientUUID, null, serverIP, serverPort);
-            DatagramPacket packetOut = msgOut.getDatagramPacket();
-
-            // variables for retries & packet buffer
-            byte[] bufIn;
-            DatagramPacket packetIn = null;
-
-            try {
-                socket.send(packetOut);
-            } catch (IOException e) {
-                Log.e(TAG, "SEND FAILED!\n");
-                if (e instanceof PortUnreachableException) {
-                    Log.e(TAG, "DESTINATION UNREACHABLE", e);
-                    return new ConnectionResult(false, ErrorCodes.SOCKET_PORT_UNREACHABLE);
-                } else {
-                    Log.e(TAG, "Something weird happened on send", e);
-                }
-            }
-
-            // create input buffer, after knowing send successful
-            bufIn = new byte[NetworkConsts.PAYLOAD_SIZE];
-            packetIn = new DatagramPacket(bufIn, bufIn.length);
-
-            try {
-                socket.receive(packetIn);
-            } catch (IOException e) {
-                Log.e(TAG, "RECEIVE FAILED!\n");
-                if (e instanceof SocketTimeoutException) {
-                    Log.e(TAG, "SOCKET TIMEOUT");
-                    return new ConnectionResult(false, ErrorCodes.SOCKET_TIMEOUT);
-                } else if (e instanceof PortUnreachableException) {
-                    Log.e(TAG, "NO SERVER RUNNING AT DESTINATION", e);
-                    return new ConnectionResult(false, ErrorCodes.SOCKET_PORT_UNREACHABLE);
-                } else if (e instanceof IOException) {
-                    Log.e(TAG, "SOCKET EXPLODED", e);
-                    return new ConnectionResult(false, ErrorCodes.SOCKET_IO_ERROR);
-                } else {
-                    Log.e(TAG, "Something weird happened on receive", e);
-                    return new ConnectionResult(false, ErrorCodes.UNKNOWN_ERROR);
-                }
-            }
-
-            MessageIn msgIn = new MessageIn(packetIn);
-            if (msgIn.getType().equals(MessageTypes.ACK_MESSAGE)) {
-                return new ConnectionResult(true, ErrorCodes.NO_ERROR);
-            } else {
-                int errorCode = Integer.parseInt(msgIn.getContent());
-                Toast.makeText(ChatActivity.this, "Server responded: " + ErrorCodes.getStringError(errorCode), Toast.LENGTH_LONG).show();
-                return new ConnectionResult(false, errorCode);
-            }
-        }
-
-        @Override
-        protected void onPostExecute(ConnectionResult connectionResult) {
-            if (connectionResult.getRegisterStatus()) {
-                switch (source) {
-                    case NAV_UP:
-                        // TODO: MainActivity will be created and resumed
-                        NavUtils.navigateUpFromSameTask((Activity) context);
-                        break;
-                    case SYSTEM_BACK:
-                        // TODO: MainActivity will be resumed
-                        ChatActivity.super.onBackPressed();
-                        break;
-                    default:
-                        Log.e(TAG, "Switch case default. Shouldn't be here, think harder!");
-                }
-            }
+        } else{
+            Toast.makeText(ChatActivity.this, "Server responded: " + ErrorCodes.getStringError(result.getErrorCode()), Toast.LENGTH_LONG).show();
         }
     }
+
+    @Override
+    public void onProgressUpdateFetch(int value) {
+    }
+
+    @Override
+    public void onCancelledFetch() {
+    }
+
+    @Override
+    public void onPostExecuteFetch(PriorityQueue<Message> messageIns) {
+        StringBuilder builder = new StringBuilder();
+
+        if (messageIns != null && !messageIns.isEmpty()) {
+            while (!messageIns.isEmpty()) {
+                MessageIn msg = (MessageIn) messageIns.poll();
+                builder.append(msg.getContent() + "\n");
+            }
+            builder.deleteCharAt(builder.length() - 1);
+            mTextChatlog.setText(builder.toString());
+            readyUIforFetch();
+        } else if (messageIns == null) {
+            // maybe make queue and errorcode a pair
+            // TODO go back to mainactivity
+        } else {
+            mTextChatlog.setText("no messages on server");
+            readyUIforFetch();
+        }
+    }
+
 
     public enum BackActions {
         NAV_UP, SYSTEM_BACK

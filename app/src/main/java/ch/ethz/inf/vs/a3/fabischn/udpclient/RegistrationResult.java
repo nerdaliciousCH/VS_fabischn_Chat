@@ -4,12 +4,12 @@ package ch.ethz.inf.vs.a3.fabischn.udpclient;
  * Created by fabian on 01.11.16.
  */
 
-public class ConnectionResult {
+public class RegistrationResult {
 
     private final boolean mRegistered;
     private final int mErrorCode;
 
-    public ConnectionResult(final boolean registered, final int errorCode){
+    public RegistrationResult(final boolean registered, final int errorCode){
         mRegistered = registered;
         mErrorCode = errorCode;
     }

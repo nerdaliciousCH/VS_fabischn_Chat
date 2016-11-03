@@ -19,14 +19,27 @@
 
 
     <!-- keys for preferences -->
-    <string name="key_setting_ip">setting_ip</string>
-    <string name="key_setting_port">setting_port</string>
-    <string name="key_connection_parameters">"connection_parameters</string>
-    <string name="key_button_join_text">key_button_join_text</string>
-    <string name="key_button_join_enabled">key_button_join_enabled</string>
-    <string name="key_layout_progress_visibility">key_layout_progress_visibility</string>
-    <string name="key_text_username_enabled">key_text_username_enabled</string>
+    <string name="key_setting_ip">key_setting_ip</string>
+    <string name="key_setting_port">key_setting_port</string>
 
-    <!-- TODO: Remove or change this placeholder text -->
-    <string name="hello_blank_fragment">Hello blank fragment</string>
+    <!-- keys for bundles -->
+    <string name="key_connection_parameters">"key_connection_parameters</string>
+    <string name="key_back_source">key_back_source</string>
+
+    <!-- keys for UI state -->
+    <string name="key_layout_main_progress_visibility">key_layout_main_progress_visibility</string>
+    <string name="key_edittext_username_enabled">key_edittext_username_enabled</string>
+    <string name="key_edittext_username_text">key_edittext_username_text</string>
+    <string name="key_button_join_enabled">key_button_join_enabled</string>
+    <string name="key_button_join_text">key_button_join_text</string>
+
+
+    <string name="key_layout_chat_progress_visibility">key_layout_chat_progress_visibility</string>
+    <string name="key_text_username_enabled">key_text_username_enabled</string>
+    <string name="key_text_username_text">key_text_username_text</string>
+    <string name="key_button_chatlog_enabled">key_button_chatlog_enabled</string>
+    <string name="key_button_chatlog_text">key_button_chatlog_text</string>
+    <string name="key_text_chatlog_enabled">key_text_chatlog_enabled</string>
+    <string name="key_text_chatlog_text">key_text_chatlog_text</string>
+
 </resources>
